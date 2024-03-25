@@ -11,6 +11,7 @@ import colorama
 colorama.init(autoreset=True)
 file_color=colorama.Fore.LIGHTBLUE_EX
 dire_color=colorama.Fore.LIGHTGREEN_EX
+ind_color=colorama.Fore.LIGHTYELLOW_EX
 back_color=colorama.Fore.RESET
 wait=['< -- wait -- >\r','              \r']
 ddict={}
@@ -83,17 +84,22 @@ def setenv():
     os.popen('@echo off && setx %s %s'%(var_name,tools_env.strip(';')))
     print('[+] save success')
 
-def showdict(dir_dict,pad="",search_str="",is_show_file=True,is_dire=False,dire_in=-1,hide=True,num_col=0,Only_Name=False):
+def showdict(dir_dict,pad="",search_str="",is_show_file=True,is_dire=False,dire_in=-1,hide=True,num_col=0,Only_Name=False,Depth=0):
     n=0
     cache=''
-    file_cache=""
-    dire_cache=""
     if Only_Name:
-        file_cache=[]
-        dire_cache=[]
+        if is_show_file:
+            file_cache=[]
+            dire_cache=[]
+        else:
+            file_cache={}
+            dire_cache={}
+    else:
+        file_cache=""
+        dire_cache=""
     file_num=0
-    file_for=file_color+'{}'+back_color+' / '
-    dire_for='\n{}'+"*- "+dire_color+'{}'+back_color
+    dire_for='\n{}'+"*- "+dire_color+'\\'*(Depth!=0)+'-'*(Depth-1)+'{}'+'-'*(Depth-1)+'/'*(Depth!=0)+back_color
+    file_for='{}{}{} / '
     for i in dir_dict:
         if dir_dict[i]==1:
             if is_show_file and ((dire_in + is_dire)==-1 or (dire_in+is_dire)==2):
@@ -108,7 +114,7 @@ def showdict(dir_dict,pad="",search_str="",is_show_file=True,is_dire=False,dire_
                 if Only_Name:
                     file_cache.append(i)
                 else:
-                    file_cache+="%s / "%(file_color+i+back_color)
+                    file_cache+=file_for.format(file_color,i,back_color)
                 n=n+1
         else:
             if ('hide' in i and hide) or ('real_hide' in i):
@@ -116,12 +122,15 @@ def showdict(dir_dict,pad="",search_str="",is_show_file=True,is_dire=False,dire_
             n_1=0
             cache_1=''
             if is_dire:
-                n_1,cache_1=showdict(dir_dict[i],pad+'  ',search_str,is_show_file,is_dire,(search_str in i or (dire_in==1)),hide,num_col,Only_Name)
+                n_1,cache_1=showdict(dir_dict[i],pad+'  ',search_str,is_show_file,is_dire,(search_str in i or (dire_in==1)),hide,num_col,Only_Name,Depth+1)
             else:
-                n_1,cache_1=showdict(dir_dict[i],pad+'  ',search_str,is_show_file,is_dire,-1,hide,num_col,Only_Name)
+                n_1,cache_1=showdict(dir_dict[i],pad+'  ',search_str,is_show_file,is_dire,-1,hide,num_col,Only_Name,Depth+1)
             if n_1!=0 or search_str=='':
                 if Only_Name:
-                    dire_cache+=cache_1
+                    if is_show_file:
+                        dire_cache+=cache_1
+                    else:
+                        dire_cache[i]=cache_1
                 else:
                     dire_cache+=dire_for.format(pad,i)+cache_1
                 #cache+="\n%s*- %s"%(pad,dire_color+i+back_color)+cache_1
@@ -131,7 +140,10 @@ def showdict(dir_dict,pad="",search_str="",is_show_file=True,is_dire=False,dire_
             file_cache=''
         else:
             file_cache="\n"+pad+'+-- '+file_cache[:-3]
-    cache=file_cache+dire_cache
+    if is_show_file:
+        cache=file_cache+dire_cache
+    else:
+        cache=dire_cache
     return n,cache
 
 def get_cmd_info(path):
@@ -184,11 +196,69 @@ def editbat(name,cmd,path,real_dir,represent,is_start):
         bat_file.write(direct.encode('gbk'))
     except:
         os.remove(file_path)
-        
+
+def Sel_Path(Path_l):
+    path_len=len(Path_l)
+    if path_len==0:
+        return False
+    elif path_len==1:
+        return Path_l[0]
+    else:
+        n=0
+        for i in Path_l:
+            print('[{}{}{}] {}{}{}'.format(ind_color,n,back_color,dire_color,i,back_color))
+            n+=1
+        ind=-1
+        n=5
+        while n>0:
+            try:
+                ind=int(input(ind_color+"Choose Path:"+back_color))
+                if ind<0 or ind>=path_len:
+                    n-=1
+                    continue
+                break
+            except ValueError:
+                n-=1
+        if n==0:
+            raise ValueError("Please enter the appropriate number  (base:0~9)")
+        return Path_l[ind]
+
+def getpaths(dire_={},name="",curr_dire=''):
+    result=[]
+    raw_name=name
+    if '/' in name:
+        ind=name.find('/')
+        name_1=name.split('/')[1:]
+        name=name[:ind]
+    else:
+        name_1=False
+    for i in dire_:
+        if dire_[i]==1:
+            continue
+        result+=getpaths(dire_[i],raw_name,curr_dire+'/'+i)
+        if i==name:
+            if name_1:
+                dire_c=dire_[i]
+                for j in name_1:
+                    if dire_c.get(j)!=None:
+                        dire_c=dire_c[j]
+                    else:
+                        dire_c=False
+                        break
+                if dire_c==False:
+                    continue
+            result.append(curr_dire+'/'+raw_name)
+    return result
+                
+
+
 def addbat(name,cmd='',path='',real_dir='',represent='',is_start=True,is_re=False):
+    path_1=Sel_Path(getpaths(ddict['/'],path))
+    if path and path_1==False:
+        exit("%s not found"%path)
     if is_re:
-        if path and cmd:
-            exit("Only command contents or command directories can be replaced")
+        #if path and cmd:
+        #    exit("Only command contents or command directories can be replaced")
         try:
             cmd_c,des,is_start_c,real_dir_c=get_cmd_info(filelist[name][0]+'\\'+name+'.bat')
         except KeyError:
@@ -207,19 +277,26 @@ def addbat(name,cmd='',path='',real_dir='',represent='',is_start=True,is_re=Fals
         if path:
             if os.path.isdir(root_path+'\\'+path):
                 path+="\\"+name
-            elif os.path.isdir(root_path+'\\'+path+'.bat'):
+            elif os.path.isfile(root_path+'\\'+path+'.bat'):
                 exit("There are duplicate options")
+            if not os.path.isfile(root_path+'\\'+path+'.bat'):
+                os.rename(filelist[name][0]+'\\'+name+'.bat',root_path+'\\'+path+'.bat')
                 return 0
-            os.rename(filelist[name][0]+'\\'+name+'.bat',root_path+'\\'+path+'.bat')
-            return 0
-        else:
-            editbat(name,cmd,filelist[name][0][len(root_path)+1:],real_dir,represent,is_start)
-            return 0
+        
+        path=filelist[name][0][len(root_path)+1:]
     elif name in filelist:
         exit("There are duplicate options")
     editbat(name,cmd,path,real_dir,represent,is_start)
-    
-def deldir(path):
+
+def redir(source,target):
+    if not source:
+        exit("No type specified")
+    if os.path.isdir(root_path+'\\'+target):
+        exit(root_path+'/'+target+" already exists")
+    else:
+        os.rename(root_path+'\\'+source,root_path+'\\'+target)
+
+def deldir(path): 
     cache=os.listdir(path)
     for i in cache:
         if os.path.isdir(path+'/'+i):
@@ -239,7 +316,7 @@ def delete(path):
     else:
         exit('The command or directory does not exist')
 
-def create(path):
+def create(path,redir=""):
     real_path=root_path
     if os.path.isdir(real_path+'/'+path):
         exit("The specified destination is occupied by the directory")
@@ -293,7 +370,7 @@ def OutCommands(coms,com_s):
     cmd_width=0
     des_width=0
     for i in coms:
-        if filelist[i][1]:
+        if filelist[i][1]==1:
             continue
         if com_s=='*' or com_s in i :
             cache=(get_OutCommand(i))
@@ -319,6 +396,7 @@ def help(parse : argparse.ArgumentParser):
     parse.add_argument('-hide',dest='is_hide',action='store_false', default=True,help="Show hide commands default:True")
     parse.add_argument('-out',dest='out_command',help="View the contents of the command")
     parse.add_argument('-noc',dest='num_col',type=int,default=8,help="Number of columns")
+    parse.add_argument('-win',dest="Is_Win",action='store_true',default=False,help="Using the Window Interface") # 还没实现
 
     """ search """
     parse.add_argument('-s','--search',dest='search_str',default='',help="Search specified string")
@@ -336,6 +414,7 @@ def help(parse : argparse.ArgumentParser):
     
     """ type """
     parse.add_argument('-t','--type',dest='type',default='',help='Type of command xx/xxx/xxxx')
+    parse.add_argument('-redir',dest='redir',default='',help="Change type position")
     
     """ create type """
     parse.add_argument('-add',dest='add_dire',help='Added type')
@@ -356,14 +435,16 @@ def main():
         print("\n--------------- view Type ---------------\n")
         print(showdict(ddict,'',is_show_file=False)[1])
         exit(0)
-    elif args.name:
-        if (not (args.direct or args.type or args.is_re)):
-            exit("When name exists, direct is required")
-        addbat(args.name,args.direct,args.type,args.target_dir,args.represent,args.is_start,args.is_re)
     elif args.del_dire:
         delete(args.del_dire)
     elif args.add_dire:
         create(args.add_dire)
+    elif args.redir:
+        create(args.name,args.redir)
+    elif args.name:
+        if (not (args.direct or args.type or args.is_re)):
+            exit("When name exists, direct is required")
+        addbat(args.name,args.direct,args.type,args.target_dir,args.represent,args.is_start,args.is_re)
     elif args.out_command:
         coms=showdict(ddict,'',args.search_str,is_dire=True,hide=args.is_hide,num_col=args.num_col,Only_Name=True)[1]
         OutCommands(coms,args.out_command)
