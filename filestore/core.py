@@ -1,0 +1,176 @@
+
+version=1.0
+"""
+目录中的目录使用json
+目录中的文件整合为一段数据
+如：
+    {d1:{d2:[{d3:[f1,f2,f3]}],[f1,f3,f4]}}
+    整合为
+    {d1:[{d2:[{d3:fdata}]},fdata]}
+"""
+import struct
+
+class FileExec(Exception):
+    EOF=-1
+    Format=0
+    Mode=1
+    def __init__(self,*args,**kargs):
+        super(FileExec,self).__init__()
+        self.ErrorMessage=args[0]
+        self.Errorid=args[1]
+    pass
+
+class fileio:
+    def __init__(self,path,mode='r'):
+        self.body=open(path,mode)
+        self.mode=self.Makemode(mode)
+        self.path=path
+
+
+    def Makemode(self,mode):
+        fmode=0
+        for i in mode:
+            if i == 'w':
+                fmode|=1
+            elif i=='b':
+                fmode|=2
+            elif i=='r':
+                fmode|=4
+        if fmode==2:
+            fmode|=4
+        return fmode
+    
+    def Write(self,data):
+        if type(data)==str:
+            if self.mode&3==1:
+                return self.body.write(data)
+            raise FileExec("Need to open in write mode",FileExec.Mode)
+        elif type(data)==bytes:    
+            if self.mode&3==3:
+                return self.body.write(data)
+            raise FileExec("Need to open in byte write mode",FileExec.Mode)
+        else:
+            raise FileExec("data Expected str/bytes type",FileExec.Format)
+        
+    def WriteByte(self,data:int):
+        if self.mode&3==3:
+            return self.body.write(data.to_bytes(1,'little'))
+        raise FileExec("Need to open in byte write mode",FileExec.Mode)
+    
+    def WriteWord(self,data:int):
+        if self.mode&3==3:
+            return self.body.write(data.to_bytes(2,'little'))
+        raise FileExec("Need to open in byte write mode",FileExec.Mode)
+    
+    def WriteInt(self,data:int):
+        if self.mode&3==3:
+            return self.body.write(data.to_bytes(4,'little'))
+        raise FileExec("Need to open in byte write mode",FileExec.Mode)
+    
+    @staticmethod
+    def CheckNull(data):
+        if len(data)==0:
+            raise FileExec("File read reached end",FileExec.EOF)
+
+    def Read(self,len=-1):
+        if len==-1:
+            return self.body.read()
+        return self.body.read(len)
+        
+    def ReadByte(self):
+        if self.mode&6==6:
+            cache:bytes=self.body.read(1)
+            fileio.CheckNull(cache)
+            return struct.unpack("<b",cache)[0]
+        raise FileExec("Need to open in byte read mode",FileExec.Mode)
+    
+    def ReadWord(self):
+        if self.mode&6==6:
+            cache:bytes=self.body.read(2)
+            fileio.CheckNull(cache)
+            if len(cache)!=2:
+                self.body.seek(-1,1)
+                raise FileExec("Insufficient remaining file length",FileExec.Format)
+            return struct.unpack("<h",cache)[0]
+        raise FileExec("Need to open in byte read mode",FileExec.Mode)
+    
+    def ReadInt(self):
+        if self.mode&6==6:
+            cache:bytes=self.body.read(4)
+            fileio.CheckNull(cache)
+            if len(cache)!=4:
+                self.body.seek(-len(cache),1)
+                raise FileExec("Insufficient remaining file length",FileExec.Format)
+            return struct.unpack("<i",cache)[0]
+        raise FileExec("Need to open in byte read mode",FileExec.Mode)
+
+    def ReadUntil(self,data,drop=False):
+        if self.mode&2==0:
+            raise FileExec("Need to open in byte read mode",FileExec.Mode)
+        if type(data)==str:
+            data=data.encode('utf-8')
+        res=b''
+        ind=0
+        end=len(data)
+        while ind<end:
+            cache=self.body.read(1)
+            if len(cache)==0:
+                self.body.seek(-len(res)-1,1)
+                raise FileExec("Not Found data",FileExec.Format)
+            if cache==data[ind:ind+1]:
+                res+=cache
+                ind+=1
+            elif ind!=0:
+                ind=0
+        if drop==True:
+            res=res[:-len(data)]
+        return res
+
+    def close(self):
+        self.body.close()
+
+class StoreError(Exception):
+    VarType=1
+    Exist=2
+    init=3
+    missing=4
+    def __init__(self,*args,**kargs):
+        super(StoreError,self).__init__()
+        self.ErrorMessage=args[0]
+        self.Errorid=args[1]
+
+class fobj(object):
+    suffix=None
+    
+    @staticmethod
+    def make_opt(arg):
+        pass
+    
+    @staticmethod
+    def handle(args):
+        pass
+
+    
+    def __init__(self,*arg,**kargs):
+        self.name:str=kargs.get('name')
+        self.path:str=kargs.get('path')
+        pass
+
+    def moveto(self,topath):
+        pass
+
+    def remove(self,key=None):
+        pass
+
+    def Parse(self,file:fileio):
+        pass
+
+    def Save(self,file:fileio):
+        pass
+
+
+
+Storetypes:dict[int,type[fobj]]={}
+filetypes:dict={}
+
+
