@@ -1,7 +1,7 @@
 #!python3
 """
 @User: rot_will
-@date: 2022.6.26
+@date: 2023.2.24
 """
 import os,re
 import argparse
@@ -156,14 +156,24 @@ def get_cmd_info(path):
         real_dir=re.findall('set real_dir="(.*?)"',data)[0].strip()
     except IndexError:
         pass
-        
+    precom=''
+    dl=data.splitlines()
+    status=False
+    for i in dl:
+        if '%c%' in i:
+            status=False
+        if status:
+            precom+=i+'\r\n'
+        if 'set c=' in i:
+            status=True
+    precom=precom.strip()
     is_start=False
     if 'start ""'  in data:
         is_start=True
-    return cmd,des,is_start,real_dir
+    return cmd,des,precom,is_start,real_dir
 
 
-def editbat(name,cmd,path,real_dir,represent,is_start):
+def editbat(name,cmd,path,precom,real_dir,represent,is_start):
     file_path=root_path+'\\'+path+'\\'+name+'.bat'
     bat_file=open(file_path,'wb')
     try:
@@ -179,7 +189,11 @@ def editbat(name,cmd,path,real_dir,represent,is_start):
             cd_dir+=comm_orig[2]+'\r\n'
             cd_dir+='set real_dir="%s"'%real_dir+'\r\n'
             cd_dir+="cd /d %real_dir%"+'\r\n'
-        
+        if precom:
+            precommand=precom
+        else:
+            precommand=""
+
         cmd=cmd.replace("'",'"')
         if os.path.isfile(cmd):
             if ' ' in cmd:
@@ -192,10 +206,14 @@ def editbat(name,cmd,path,real_dir,represent,is_start):
             if '%*' in cmd:
                 pad='%c% \r\n'
             cmd_line+=cmd
-        direct=direct+cd_dir+cmd_line+'\r\n'+pad+return_dir+des_line
+        direct=direct+cd_dir+cmd_line+'\r\n'+precommand+'\r\n'+pad+return_dir+des_line
+        direct=direct.strip()
         bat_file.write(direct.encode('gbk'))
-    except:
+    except Exception as e:
+        bat_file.close()
         os.remove(file_path)
+        return -1
+    return 
 
 def Sel_Path(Path_l):
     path_len=len(Path_l)
@@ -252,15 +270,17 @@ def getpaths(dire_={},name="",curr_dire=''):
                 
 
 
-def addbat(name,cmd='',path='',real_dir='',represent='',is_start=True,is_re=False):
+def addbat(name,cmd='',path='',precom='',real_dir='',represent='',is_start=True,is_re=False):
     path_1=Sel_Path(getpaths(ddict['/'],path))
     if path and path_1==False:
         exit("%s not found"%path)
+    else:
+        path=path_1
     if is_re:
         #if path and cmd:
         #    exit("Only command contents or command directories can be replaced")
         try:
-            cmd_c,des,is_start_c,real_dir_c=get_cmd_info(filelist[name][0]+'\\'+name+'.bat')
+            cmd_c,des,precom_,is_start_c,real_dir_c=get_cmd_info(filelist[name][0]+'\\'+name+'.bat')
         except KeyError:
             print("Not found %s \\ %s"%(name,path))
             exit(0)
@@ -272,8 +292,12 @@ def addbat(name,cmd='',path='',real_dir='',represent='',is_start=True,is_re=Fals
             represent=des
         if not cmd:
             cmd=cmd_c
-        if not real_dir:
+        if real_dir==None:
             real_dir=real_dir_c
+        if precom==None:
+            precom=precom_
+        else:
+            precom=precom.replace('\\n','\r\n').replace("'",'"')
         if path:
             if os.path.isdir(root_path+'\\'+path):
                 path+="\\"+name
@@ -286,7 +310,9 @@ def addbat(name,cmd='',path='',real_dir='',represent='',is_start=True,is_re=Fals
         path=filelist[name][0][len(root_path)+1:]
     elif name in filelist:
         exit("There are duplicate options")
-    editbat(name,cmd,path,real_dir,represent,is_start)
+    status=editbat(name,cmd,path,precom,real_dir,represent,is_start)
+    if status==-1 and is_re:
+        editbat(cmd_c,path,precom_,real_dir_c,des,is_start_c)
 
 def redir(source,target):
     if not source:
@@ -316,7 +342,7 @@ def delete(path):
     else:
         exit('The command or directory does not exist')
 
-def create(path,redir=""):
+def create(path):
     real_path=root_path
     if os.path.isdir(real_path+'/'+path):
         exit("The specified destination is occupied by the directory")
@@ -328,44 +354,79 @@ def create(path,redir=""):
             os.mkdir(real_path)
     getdirlist(is_creat=True)
     setenv()
-    
+
+def limit_out(row,rows):
+    sys.stdout.flush()
+    uchar=''
+    if row>=rows:
+        sys.stdout.write(wait[0])
+        uchar=msvcrt.getch()
+        sys.stdout.write(wait[1])
+        if uchar == b' ':
+            row=1
+            rows=5
+        elif uchar in [b'e',b'q',b'\x03',b'\x1a']:
+            raise KeyError()
+        else:
+            row=1
+            rows=1
+    else:
+        row+=1
+    return row,rows
+
+
 def out_command(coms,rows=20):
     coms=coms.splitlines()
     row=0
-    uchar=''
     curr_row=0
-    while curr_row<len(coms):
-        sys.stdout.flush()
-        sys.stdin.flush()
+    for curr_row in coms:
         try:
-            if row<rows:
-                sys.stdout.write(wait[1])
-                print(coms[curr_row])
-                row=row+1
-                curr_row+=1
-            else:
-                sys.stdout.write(wait[0])
-                uchar=msvcrt.getch()
-                if uchar == b' ':
-                    row=row-5
-                elif uchar in [b'e',b'q',b'\x03',b'\x1a']:
-                    raise KeyError()
-                else:
-                    row-=1
-        except Exception as e:
-            sys.stdout.write(wait[1])
-            print(coms[curr_row])
+            row,rows=limit_out(row,rows)
+            print(curr_row)
+        except:
+            print(curr_row)
             return 0
 
-def out_des_com(comm_list,cmd_width,des_width):
+def out_des_com(comm_list,cmd_width,des_width,rows=20):
+    row=0
     print("command:")
     for i in comm_list:
-        cmd=i[0].ljust(cmd_width,b' ').decode('gbk')
-        des=i[2].ljust(des_width,b' ').decode('gbk')
-        print("   %s : %s : %s"%(cmd,des,i[1]))
+        cmd=i[0].encode("gbk").ljust(cmd_width,b' ').decode('gbk')
+        des=i[2].encode("gbk").ljust(des_width,b' ').decode('gbk')
+        outdata="   %s : %s : %s"%(cmd,des,i[1])
+        try:
+            row,rows=limit_out(row,rows)
+            print(outdata)
+        except:
+            return 0
 
 
-def OutCommands(coms,com_s):
+def out_all_com(comm_list,rows=5):
+    title=["Name",
+           "Content of Execution",
+           "Description",
+           "Pre-executed command",
+           "Actual execution directory",
+           "Window program"]
+    row=0
+    for i in comm_list:
+        outdata=""
+        pad=""
+        align=4
+        for j,v in enumerate(i):
+            if type(v)!=bool and not v:
+                continue
+            outdata+="%s%s : %s\r\n"%(pad,title[j].ljust(align,' '),v)
+            pad='  '
+            align=26
+        try:
+            row,rows=limit_out(row,rows)
+            print(outdata)
+        except:
+            return 0
+        pass
+
+def OutCommands(coms,com_s,isall):
     out_comm_list=[]
     cmd_width=0
     des_width=0
@@ -379,15 +440,15 @@ def OutCommands(coms,com_s):
             if len(cache[2])>des_width:
                 des_width=len(cache[2])
             out_comm_list.append(cache)
-    out_des_com(out_comm_list,cmd_width,des_width)
+    if isall:
+        out_all_com(out_comm_list)
+    else:
+        out_des_com(out_comm_list,cmd_width,des_width)
     
 def get_OutCommand(com_n):
     comm_path=filelist[com_n][0]+'\\'+com_n+'.bat'
-    f=open(comm_path,'rb')
-    d=f.read().decode('gbk')
-    cmd=re.findall('set c=(.*)',d)[0]
-    des=re.findall('set des=(.*)',d)[0].encode("gbk")
-    return [com_n.encode("gbk"),cmd,des]
+    cmd,des,precom,is_start,real_dir=get_cmd_info(comm_path)
+    return [com_n,cmd,des,precom,real_dir,is_start]
         
 def help(parse : argparse.ArgumentParser):
     """ show """
@@ -395,6 +456,7 @@ def help(parse : argparse.ArgumentParser):
     parse.add_argument('-help',dest='show_type',action='store_true', default=False,help="view type default:False")
     parse.add_argument('-hide',dest='is_hide',action='store_false', default=True,help="Show hide commands default:True")
     parse.add_argument('-out',dest='out_command',help="View the contents of the command")
+    parse.add_argument('-oall',dest='out_comm_info',action='store_true',default=False,help="View the all contents of the command")
     parse.add_argument('-noc',dest='num_col',type=int,default=8,help="Number of columns")
     parse.add_argument('-win',dest="Is_Win",action='store_true',default=False,help="Using the Window Interface") # 还没实现
 
@@ -404,12 +466,13 @@ def help(parse : argparse.ArgumentParser):
     
     """ command_data """
     parse.add_argument('-d','--direct',dest='direct',default='',help='Specify command')
+    parse.add_argument('-r','--represent',dest='represent',default='',help="command note")
+    parse.add_argument('-precom',dest='precom',help='Pre-executed commands to set the environment')
+    parse.add_argument('-tardir',dest='target_dir',help="Specify target program directory")
     parse.add_argument('-start',dest='is_start',action='store_false', default=True,help="Do you want to use start to launch exe")
-    parse.add_argument('-tardir',dest='target_dir',default='',help="Specify target program directory")
     
     """ command """
     parse.add_argument('-n','--name',dest='name',default='',help='Specify script name')
-    parse.add_argument('-r','--represent',dest='represent',default='',help="command note")
     parse.add_argument('-replace',dest='is_re',action='store_true',default=False,help="Replace the original command default:False")
     
     """ type """
@@ -435,22 +498,41 @@ def main():
         print("\n--------------- view Type ---------------\n")
         print(showdict(ddict,'',is_show_file=False)[1])
         exit(0)
+    elif args.name:
+        if (not (args.direct or args.type or args.is_re)):
+            exit("When name exists, direct is required")
+        addbat(args.name,args.direct,args.type,args.precom,args.target_dir,args.represent,args.is_start,args.is_re)
     elif args.del_dire:
         delete(args.del_dire)
     elif args.add_dire:
         create(args.add_dire)
     elif args.redir:
         create(args.name,args.redir)
-    elif args.name:
-        if (not (args.direct or args.type or args.is_re)):
-            exit("When name exists, direct is required")
-        addbat(args.name,args.direct,args.type,args.target_dir,args.represent,args.is_start,args.is_re)
     elif args.out_command:
         coms=showdict(ddict,'',args.search_str,is_dire=True,hide=args.is_hide,num_col=args.num_col,Only_Name=True)[1]
-        OutCommands(coms,args.out_command)
+        OutCommands(coms,args.out_command,args.out_comm_info)
     else:
         coms=showdict(ddict,'',args.search_str,is_dire=args.is_dire,hide=args.is_hide,num_col=args.num_col)[1]
         out_command(coms.strip())
 
 if __name__=='__main__':
     main()
+
+
+"""
+    一个窗口
+    开始为第一层目录，其中类型的左边存在倒三角，用于展开，
+                    命令的左边没有东西，双击命令可以执行
+                    当鼠标悬浮在命令上0.5秒时，显示命令的注释
+                在选中命令或类型时 点击delete按键，会弹出窗口，询问是否删除
+                                 点击insert按键，会弹出窗口，用来指定创建的类型或命令的信息
+
+    添加窗口
+        添加窗口中 最上面是两个单选框，表示类型或命令
+        当选中类型时，下面只有两个输入框，就是名称和所属类型，
+            在选中的命令，点击insert按键添加时，所属类型默认为选中的命令所在类型
+            在选中的为类型，点击insert按键添加时，所属类型默认为选中的类型
+          回车默认为确定，当点击确定按钮时，检测名称与类型是否为空
+
+
+"""
