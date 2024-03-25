@@ -1,8 +1,9 @@
 import os,sys
 import filestore.core as core
-import filestore.store as store
-import filestore.method as method
-import core.config as config
+#import filestore.store as store
+#import filestore.method as method
+#from filestore.core import StoreError
+#import core.config as config
 import core.args as args
 from information.log import log
 
@@ -83,21 +84,38 @@ def backfilestore():
     backup.close()
     pass
 
+def trim_dir(dirs):
+    if '__pycache__' in dirs:
+        dirs.remove("__pycache__")
+    ndirs=[]
+    for i in dirs:
+        if '.py' == i[-3:]:
+            i=i[:-3]
+        ndirs.append(i)
+    return ndirs
+
 def load_fileplugin():
-    fpluginpath=os.path.join(sys.path[0],'filestore/plugin')
+    fpluginpath=os.path.join(sys.path[0],'filestore/store')
     if os.path.exists(fpluginpath)==False:
+        os.mkdir(fpluginpath)
         return
-    fplugins=os.listdir(fpluginpath)
-    for i in fplugins:
-        pluginpath=os.path.join(fpluginpath,i)
-        __import__(pluginpath)
+    fplugins=trim_dir(os.listdir(fpluginpath))
+    for pluname in fplugins:
+
+        #pluginpath=os.path.join(fpluginpath,i)
+        plugin=__import__(f"filestore.store.{pluname}",fromlist=("*"))
+        if hasattr(plugin,"FILETYPES"):
+            for filetype in plugin.FILETYPES:
+                core.Storetypes[filetype.tid]=filetype
+        if hasattr(plugin,"CheckCONFIG"):
+            plugin.CheckCONFIG()
     pass
 
 def init():
     global fileroot
     if fileroot!=None:
         return
-    # load_fileplugin()
+    load_fileplugin()
     
     hfgpath=os.path.join(sys.path[0],'helper2.hfg')
     if os.path.exists(hfgpath):
@@ -107,8 +125,6 @@ def init():
         save()
     core.filetypes=map_types()
     
-    if os.path.exists(config.cfg.defpath)==False:
-        method.MakeDir(config.cfg.defpath)
 
 def make_filesystem(arg,objtype:type[core.fobj]):
 
@@ -116,8 +132,147 @@ def make_filesystem(arg,objtype:type[core.fobj]):
         objtype.handle(arg)
     except core.StoreError as e:
         log(e.ErrorMessage,2,log_title)
+        return False
     save()
+    return True
     pass
+
+
+def split_path(path):
+    if path[0]=='/':
+        path=path[1:]
+    path_split=path.split('/')
+    parent_path='/'.join(path_split[:-1])
+    current_name=path_split[-1]
+
+    return parent_path,current_name
+
+def checkdire(name):
+    if name[0]=='/':
+        name=name[1:]
+    node=fileroot
+    for i in name.split('/'):
+        if i=='':
+            continue
+        node=node[i]
+        if node==None:
+            return None
+    return node
+
+def get_path(stack,node):
+    path=""
+    for i in stack:
+        if i[0].name=='/':
+            continue
+        path=path+'/'+i[0].name
+    path+='/'+node.name
+    return path
+
+
+
+def checkexists(name,path=None):
+    if path==None:
+        return checkdire(name),None
+    elif path!=None:
+        if type(path)!=str:
+            raise StoreError("the type of path must be str",StoreError.VarType)
+        obj= checkdire(path+'/'+name)
+        if obj!=None:
+            return obj,path
+    
+    stack=[]
+    node=fileroot
+    node_ind=0
+    while True:
+        if node_ind<len(node):
+            if node[node_ind].tid!=0:
+                if node[node_ind].name==name:
+                    return node[node_ind],get_path(stack,node)
+            else:
+                stack.append((node,node_ind+1))
+                node=node[node_ind]
+                node_ind=-1
+        node_ind+=1
+        if node_ind>=len(node):
+            if len(stack)==0:
+                break
+            node,node_ind=stack.pop()
+    return None,None
+
+
+def getpre(path,iscreat=True):
+    pathstack=path.strip('/').split('/')
+    node=fileroot
+    pre=node
+    stacknum=len(pathstack)
+    i=0
+    while i<stacknum-1:
+        curname=pathstack[i]
+        if curname=="":
+            i+=1
+            continue
+        pre=node
+        node=node[curname]
+        if node==None:
+            if iscreat!=True:
+                return None,None
+            pre[curname]=core.Storetypes[0](name=curname)
+            node=pre[curname]
+        i+=1
+
+    return node,pathstack[i]
+
+def getobj(path):
+    pre,objname=getpre(path,False)
+    if pre==None:
+        return None
+    return pre[objname]
+
+    pass
+
+def transfer(oripath,target):
+    oripre,oriname=getpre(oripath)
+    tarpre,tarname=getpre(target)
+    if tarpre==oripre[oriname]:
+        raise core.StoreError("target's parent is current obj",1)
+    tarobj,tarpath=checkexists(tarname,'/'.join(target.split('/')[:-1]))
+    oriobj=oripre[oriname]
+    if oriobj==None:
+        raise core.StoreError("error",1)
+    if tarobj!=None and tarobj!=oriobj:
+        oriroute=os.path.join(oriobj.path,oriname+'.'+oriobj.suffix)
+        tarroute=os.path.join(oriobj.path,tarname+'.'+oriobj.suffix)
+        if tarobj.tid!=0:
+            raise core.StoreError("%s is exists, and its path is %s"%(tarobj.name,tarpath+'/'+tarobj.name),core.StoreError.Exist)
+        elif tarobj.tid==0:
+            raise core.StoreError("%s is exists, it is a node"%(target),core.StoreError.Exist)
+        if oriroute !=tarroute:
+            try:
+                if os.path.exists(tarroute):
+                    raise core.StoreError("%s is exists"%(tarroute),core.StoreError.Exist)
+                os.rename(oriroute,tarroute)
+            except:
+                raise core.StoreError("%s -> %s error"%(oriroute,tarroute),core.StoreError.missing)
+    
+    if tarpre==oripre and oriname==tarname :
+        return oriname,oriobj
+    tarpre[tarname]=oriobj
+    tarpre[tarname].name=tarname
+    oripre.pop(oriname)
+    return tarname,tarpre[tarname]
+
+def MakeDir(path):
+        dlist=[]
+        while True:
+            cpath,cname=os.path.split(path)
+            dlist.insert(0,cname)
+            if os.path.exists(cpath):
+                break
+        for i in dlist:
+            cpath=os.path.join(cpath,i)
+            os.mkdir(cpath)
+        pass
+
 
 def remove(objpath):
     try:
@@ -167,7 +322,6 @@ def search(root,search_str=None,note=False):
         pass
     return backroot
 
-    pass
 
 def remake():
     clear_error()
@@ -286,7 +440,45 @@ def clear_error():
 
 def export(to_file,from_note):
     to_fd=core.fileio(to_file,'w')
-    note=method.checkdire(from_note)
-    parent,_=method.split_path(from_note)
+    note=checkdire(from_note)
+    parent,_=split_path(from_note)
     note.export(to_fd,parent)
     to_fd.close()
+
+def isexists(name):
+    if bool(name)==False:
+        return False
+    obj,_=checkexists(name)
+    if obj==None:
+        return False
+    else:
+        return True
+
+def rename(srcpath,name,targetpath,targetname):
+    try:
+        transfer(f"{srcpath}/{name}",f"{targetpath}/{targetname}")
+    except core.StoreError as e:
+        #print(e.ErrorMessage,f"{srcpath}/{name}",f"{targetpath}/{targetname}")
+        return False
+    save()
+    return True
+
+def getObj(path,name):
+    return getobj(f"{path}/{name}")
+
+def getObjInfoFromName(name):
+    return checkexists(name)
+
+def makeArgs(type_,name,path,attrs):
+    result=args.args()
+    for i in attrs:
+        result[i]=attrs[i]
+    result.name=name
+    result.path=path
+    for storeType in core.Storetypes.values():
+        if storeType.suffix==type_:
+            resultType=storeType
+            break
+    result.type=type_
+    return result,resultType
+    pass

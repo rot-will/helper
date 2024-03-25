@@ -145,6 +145,11 @@ class StoreError(Exception):
         self.ErrorMessage=args[0]
         self.Errorid=args[1]
 
+class attrType:
+    str=0
+    branch=1
+    list=2
+
 class fobj(object):
     suffix=None
     
@@ -175,6 +180,9 @@ class fobj(object):
 
     def export(self,file:fileio,path:str):
         pass
+    
+    def getAttr(self):
+        return None
 
 
 Storetypes:dict[int,type[fobj]]={}

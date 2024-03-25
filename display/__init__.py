@@ -1,12 +1,15 @@
 import display.console
+import display.win
 def init():
     display.console.init()
+    display.win.init()
     pass
 
 def show(args):
     if args.display=='con':
         display.console.show(args)
-    else:
+    elif args.display=='win':
+        display.win.show(args)
         pass
     pass
 

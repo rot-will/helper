@@ -7,4 +7,5 @@ def init():
     information.log.init()
     filestore.filesystem.init()
     display.init()
+    core.config.checkcfg()
     pass

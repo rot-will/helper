@@ -6,12 +6,21 @@ pad='\t'
 padnum=1
 attrpad='\t'
 attrpadnum=1
+def checkConfig():
+    defcfg={'pad': {'chr': (config.CfgObj.int,32), 'num': (config.CfgObj.int,2)}, 
+                'attrpad': {'chr': (config.CfgObj.int,32), 'num': (config.CfgObj.int,4)}}
+    config.checkConfig('console',defcfg)
+
+    pass
+
 def init():
     global pad,padnum,attrpad,attrpadnum
-    pad=chr(int(config.cfg.pad.chr))
-    padnum=int(config.cfg.pad.num)
-    attrpad=chr(int(config.cfg.attrpad.chr))
-    attrpadnum=int(config.cfg.attrpad.num)
+    checkConfig()
+
+    pad=chr(config.cfg.console.pad.chr)
+    padnum=config.cfg.console.pad.num
+    attrpad=chr(config.cfg.console.attrpad.chr)
+    attrpadnum=config.cfg.console.attrpad.num
 
 def make_opt(arg):
     console=arg.add_argument_group("Console")
