@@ -1,12 +1,15 @@
+var_name=r"tools"
+root_path=r"B:\tools"
 
 from winhelper.edit import *
 from winhelper.func import *
 from winhelper.env import *
 from winhelper.out import *
-import winhelper.win as whelp 
+
 import argparse
 import colorama
 
+colorama.init(autoreset=True)
 
 ddict={}
 tools_env=[root_path]
@@ -52,22 +55,16 @@ def main():
     parse=argparse.ArgumentParser('help')
     help(parse)
     args=parse.parse_args()
-    getdirlist(root_path,ddict,filelist,tools_env,is_creat=args.is_creat,is_hide=args.is_hide)
-    if args.Is_Win:
-        whelp.wmain(root_path,ddict,filelist,tools_env,var_name)
-        return
-    
-    colorama.init(autoreset=True)
+    getdirlist(root_path,ddict,filelist,tools_env,var_name,is_creat=args.is_creat,is_hide=args.is_hide)
     if args.is_creat:
-        setenv(tools_env,var_name)
-        return
+        setenv(root_path,ddict,filelist,tools_env,var_name)
     if args.show_type:
         parse.print_help()
         print("\n--------------- view Type ---------------\n")
         print(showdict(ddict,'',is_show_file=False)[1])
-        return
+        exit(0)
     elif args.del_dire:
-        delete(root_path,filelist,args.del_dire)
+        delete(root_path,ddict,filelist,tools_env,var_name,args.del_dire)
     elif args.add_dire:
         create(root_path,ddict,filelist,tools_env,var_name,args.add_dire)
     elif args.redir:
@@ -75,12 +72,13 @@ def main():
     elif args.name:
         if (not (args.direct or args.type or args.is_re)):
             exit("When name exists, direct is required")
-        addbat(root_path,ddict,filelist,args.name,args.direct,args.type,args.precom,args.target_dir,args.represent,args.is_start,args.is_re)
+        addbat(root_path,ddict,filelist,tools_env,var_name,args.name,args.direct,args.type,args.precom,args.target_dir,args.represent,args.is_start,args.is_re)
     elif args.out_command:
-        coms=showdict(ddict,'',args.search_str,is_dire=True,hide=args.is_hide,num_col=args.num_col,Only_Name=True)[1]
-        OutCommands(filelist,coms,args.out_command,args.out_comm_info)
+        coms=showdict(root_path,ddict,filelist,tools_env,var_name,'',args.search_str,is_dire=True,hide=args.is_hide,num_col=args.num_col,Only_Name=True)[1]
+        print(coms)
+        OutCommands(root_path,ddict,filelist,tools_env,var_name,coms,args.out_command,args.out_comm_info)
     else:
-        coms=showdict(ddict,'',args.search_str,is_dire=args.is_dire,hide=args.is_hide,num_col=args.num_col)[1]
+        coms=showdict(root_path,ddict,filelist,tools_env,var_name,'',args.search_str,is_dire=args.is_dire,hide=args.is_hide,num_col=args.num_col)[1]
         out_command(coms.strip())
 
 if __name__=='__main__':

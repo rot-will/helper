@@ -1,35 +1,103 @@
-setup.py<br>
-&nbsp;&nbsp;&nbsp;&nbsp;python3&nbsp;setup.py&nbsp;命令储存目录&nbsp;[环境变量名称]<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;目录可以是创建好的&nbsp;也可以不创建&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;环境变量名称&nbsp;默认为&nbsp;tools<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;最后会创建命令helper<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;需要重启cmd<br>
-<br>
-<br>
-<br>
-<br>
-usage:&nbsp;help&nbsp;[-h]&nbsp;[-c]&nbsp;[-help]&nbsp;[-hide]&nbsp;[-out&nbsp;OUT_COMMAND]&nbsp;[-s&nbsp;SEARCH_STR]&nbsp;[-dire]&nbsp;[-d&nbsp;DIRECT]&nbsp;[-start]<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[-tardir&nbsp;TARGET_DIR]&nbsp;[-n&nbsp;NAME]&nbsp;[-r&nbsp;REPRESENT]&nbsp;[-replace]&nbsp;[-t&nbsp;TYPE]&nbsp;[-add&nbsp;ADD_DIRE]&nbsp;[-del&nbsp;DEL_DIRE]<br>
-<br>
-optional&nbsp;arguments:<br>
-&nbsp;&nbsp;-h,&nbsp;--help&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;show&nbsp;this&nbsp;help&nbsp;message&nbsp;and&nbsp;exit<br>
-&nbsp;&nbsp;-c,&nbsp;--create&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Construct&nbsp;system&nbsp;variables&nbsp;default:False 更新环境变量<br>
-&nbsp;&nbsp;-help&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;view&nbsp;type&nbsp;default:False&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;查看帮助文档,并显示所有目录<br>&nbsp;
-&nbsp;&nbsp;-hide&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Show&nbsp;hide&nbsp;commands&nbsp;default:True&nbsp;&nbsp;&nbsp;&nbsp;列出命令,包括隐藏的文件<br>
-&nbsp;&nbsp;-out&nbsp;OUT_COMMAND&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;View&nbsp;the&nbsp;contents&nbsp;of&nbsp;the&nbsp;command&nbsp;&nbsp;&nbsp;&nbsp;显示命令的内容,与描述<br>
-&nbsp;&nbsp;-s&nbsp;SEARCH_STR,&nbsp;--search&nbsp;SEARCH_STR&nbsp;&nbsp;&nbsp;&nbsp;指定搜索的字符串&nbsp;可以传入一部分<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Search&nbsp;specified&nbsp;string&nbsp;&nbsp;&nbsp;&nbsp;搜索命令名称<br>
-&nbsp;&nbsp;-dire&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Search&nbsp;specified&nbsp;type&nbsp;&nbsp;&nbsp;指定搜索目录名称,输出搜索到的目录中的所有命令&nbsp;&nbsp;与-s&nbsp;一起使用<br>
-&nbsp;&nbsp;
-&nbsp;&nbsp;-start&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Do&nbsp;you&nbsp;want&nbsp;to&nbsp;use&nbsp;start&nbsp;to&nbsp;launch&nbsp;exe&nbsp;&nbsp;&nbsp;&nbsp;指定窗口程序不使用&nbsp;start命令<br>
-&nbsp;&nbsp;-tardir&nbsp;TARGET_DIR&nbsp;&nbsp;&nbsp;&nbsp;Specify&nbsp;target&nbsp;program&nbsp;directory&nbsp;&nbsp;&nbsp;&nbsp;当程序只能在指定目录使用时,使用这个参数,指定目录<br>
-&nbsp;&nbsp;-n&nbsp;NAME,&nbsp;--name&nbsp;NAME&nbsp;&nbsp;Specify&nbsp;script&nbsp;name&nbsp;&nbsp;&nbsp;&nbsp;指定命令的名称<br>
-&nbsp;&nbsp;-t&nbsp;TYPE,&nbsp;--type&nbsp;TYPE&nbsp;&nbsp;Type&nbsp;of&nbsp;command&nbsp;xx/xxx/xxxx&nbsp;&nbsp;&nbsp;&nbsp;指定添加的命令所在目录<br>
-&nbsp;&nbsp;-d&nbsp;DIRECT,&nbsp;--direct&nbsp;DIRECT&nbsp;&nbsp;&nbsp;&nbsp;指定添加的命令<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Specify&nbsp;command<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-&nbsp;&nbsp;-r&nbsp;REPRESENT,&nbsp;--represent&nbsp;REPRESENT&nbsp;&nbsp;&nbsp;&nbsp;指定命令的描述<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;command&nbsp;note<br>
-&nbsp;&nbsp;-replace&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Replace&nbsp;the&nbsp;original&nbsp;command&nbsp;default:False&nbsp;&nbsp;&nbsp;&nbsp;用于修改命令(命令内容,命令位置,命令描述,命令是否使用start)<br>
-&nbsp;&nbsp;
-&nbsp;&nbsp;-add&nbsp;ADD_DIRE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Added&nbsp;type&nbsp;&nbsp;&nbsp;&nbsp;添加目录<br>
-&nbsp;&nbsp;-del&nbsp;DEL_DIRE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Delete&nbsp;command&nbsp;or&nbsp;type&nbsp;&nbsp;&nbsp;&nbsp;删除目录或命令<br>
+## 安装 ##
+>python3 setup.py <tools_path> [tools_env]
+## 帮助文档 ##
+```
+usage: help [-h] [-c] [-help] [-hide] [-out OUT_COMMAND] [-oall] [-noc NUM_COL] [-win] [-s SEARCH_STR] [-dire]
+            [-d DIRECT] [-r REPRESENT] [-precom PRECOM] [-tardir TARGET_DIR] [-start] [-n NAME] [-replace] [-t TYPE]
+            [-redir REDIR] [-add ADD_DIRE] [-del DEL_DIRE]
+
+optional arguments:
+  -h, --help            show this help message and exit               查看帮助文档 
+  -c, --create          Construct system variables default:False      更新环境变量
+  -help                 view type default:False                       查看帮助文档并且只显示目录
+  -hide                 Show hide commands default:True               查看隐藏目录
+  -out OUT_COMMAND      View the contents of the command              查看搜索到的命令的大概信息
+                                                                    helper -out *
+                                                                      查看所有命令的大概信息
+  -oall                 View the all contents of the command          查看搜索到的命令的所有信息
+                                                                    helper -out * -oall
+                                                                      查看所有命令的所有信息
+  -noc NUM_COL          Number of columns                             查看命令列表时每行显示数量
+  -win                  Using the Window Interface(未实现)
+  -s SEARCH_STR, --search SEARCH_STR                                  模糊搜索名称(默认搜索命令)
+                        Search specified string                     helper -s xxx 
+  -dire                 Search specified type                         指定搜索目录名称
+                                                                    helper -s xxx -dire
+  -d DIRECT, --direct DIRECT                                          指定命令中实际执行的命令
+                        Specify command
+  -r REPRESENT, --represent REPRESENT                                 指定命令的描述，使用helper -out xxx时会显示
+                        command note
+  -precom PRECOM        Pre-executed commands to set the environment  指定实际执行的命令之前执行的命令，用来设置一些环境
+  -tardir TARGET_DIR    Specify target program directory              指定实际命令执行时所在的目录
+  -start                Do you want to use start to launch exe        更改命令执行的方式 默认执行exe/bat时使用start xxx.bat
+  -n NAME, --name NAME  Specify script name                           指定命令的名称
+  -replace              Replace the original command default:False    更改命令的参数
+  -t TYPE, --type TYPE  Type of command xx/xxx/xxxx                   指定命令所在的目录
+  -redir REDIR          Change type position                          更改目录位置
+  -add ADD_DIRE         Added type                                    添加目录
+  -del DEL_DIRE         Delete command or type                        删除目录或命令
+```
+
+### 编辑 ###
+>helper -add <direname>
+```python
+helper -add a
+helper
+"""
+*- /
+  *- \a/
+"""
+```
+>helper -n <direname> -redir <new_direpath>
+```python
+helper -n a -redir b
+helper
+"""
+*- /
+  *- \b/
+"""
+```
+>helper -del <comname/direname>
+```python
+helper -del b
+helper
+"""
+*- /
+"""
+```
+>helper -n <name> -d <command> [-t dire] [-r 描述] [-tardir 系统目录] [-start] [-replace]
+```python
+helper -add a
+helper -add b
+helper -n c -d dir -t a -r xxx     
+        # 在这里使用当-d参数指定的是某个exe程序或者bat脚本时
+        # 在这里加入-start可以设置exe或bat在命令行执行
+        #   不加的话就是使用start执行
+        # 当使用-start同时使用-replace时，可以转换start的模式
+        #   如原先使用命令行执行，在同时使用-start,-replace时，就变成使用start执行
+        #   但-start参数只对exe/bat有效
+        # 在使用-replace时，不能同时使用-d与-t参数
+        # 当创建命令时-d 与-t参数都是必要参数
+helper
+"""
+*- /
+  *- \a/
+    +-- c
+  *- \b/
+"""
+helper -n c -t b -replace
+helper
+"""
+*- /
+  *- \a/
+  *- \b/
+    +-- c
+"""
+helper -del b/c
+helper
+"""
+*- /
+  *- \a/
+  *- \b/
+"""
+```

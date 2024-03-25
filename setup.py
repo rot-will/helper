@@ -54,6 +54,16 @@ set c={}
 set des=helper"""
 cmd="\"%s\" %s\\hide\\help.py"%(python_path,root_path)
 
+windirect="""@echo off
+set c={}
+%c% -c
+set des=helper"""
+
 editbat("helper",cmd,'hide',direct)
+editbat("whelp",cmd,'hide',windirect)
+
+os.system("%s -m pip uninstall winhelper -y"%python_path)
+os.system("%s setupmodel.py install"%python_path)
+
 os.system(cmd+' -c')
 
