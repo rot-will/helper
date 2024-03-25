@@ -14,6 +14,7 @@ class FileExec(Exception):
     EOF=-1
     Format=0
     Mode=1
+    Open=2
     def __init__(self,*args,**kargs):
         super(FileExec,self).__init__()
         self.ErrorMessage=args[0]
@@ -22,7 +23,10 @@ class FileExec(Exception):
 
 class fileio:
     def __init__(self,path,mode='r'):
-        self.body=open(path,mode)
+        try:
+            self.body=open(path,mode)
+        except :
+            raise FileExec("Open file error,Please check if the path is legal",FileExec.Open)
         self.mode=self.Makemode(mode)
         self.path=path
 
@@ -125,7 +129,9 @@ class fileio:
         if drop==True:
             res=res[:-len(data)]
         return res
-
+    def flush(self):
+        self.body.flush()
+        
     def close(self):
         self.body.close()
 
@@ -153,7 +159,6 @@ class fobj(object):
     
     def __init__(self,*arg,**kargs):
         self.name:str=kargs.get('name')
-        self.path:str=kargs.get('path')
         pass
 
     def moveto(self,topath):
@@ -168,6 +173,8 @@ class fobj(object):
     def Save(self,file:fileio):
         pass
 
+    def export(self,file:fileio,path:str):
+        pass
 
 
 Storetypes:dict[int,type[fobj]]={}

@@ -86,13 +86,10 @@ def backfilestore():
 def load_fileplugin():
     fpluginpath=os.path.join(sys.path[0],'filestore/plugin')
     if os.path.exists(fpluginpath)==False:
-        os.mkdir(fpluginpath)
         return
     fplugins=os.listdir(fpluginpath)
     for i in fplugins:
-        if '.py' in i[-3:]:
-            i=i[:-3]
-        pluginpath=os.path.join("filestore/plugin",i)
+        pluginpath=os.path.join(fpluginpath,i)
         __import__(pluginpath)
     pass
 
@@ -100,7 +97,7 @@ def init():
     global fileroot
     if fileroot!=None:
         return
-    load_fileplugin()
+    # load_fileplugin()
     
     hfgpath=os.path.join(sys.path[0],'helper2.hfg')
     if os.path.exists(hfgpath):
@@ -121,16 +118,6 @@ def make_filesystem(arg,objtype:type[core.fobj]):
         log(e.ErrorMessage,2,log_title)
     save()
     pass
-
-def moveto(topath:str):
-    try:
-        if os.path.exists(os.path.realpath(topath))==False:
-            os.mkdir(os.path.realpath(topath))
-        fileroot.moveto(topath)
-    except core.StoreError as e:
-        log(e.ErrorMessage,2,log_title)
-    save()
-        
 
 def remove(objpath):
     try:
@@ -296,3 +283,10 @@ def clear_error():
         pass
     save()
     
+
+def export(to_file,from_note):
+    to_fd=core.fileio(to_file,'w')
+    note=method.checkdire(from_note)
+    parent,_=method.split_path(from_note)
+    note.export(to_fd,parent)
+    to_fd.close()

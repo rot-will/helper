@@ -1,7 +1,7 @@
 import filestore.core as core
 import os,zlib
 from filestore.method import checkexists,transfer,getpre,MakeDir
-from core.config import cfg
+import  core.config as Cfg
 import argparse
 """
 作为文件父类
@@ -19,7 +19,10 @@ class File(core.fobj):
         icoid=4
         descid=5
 
-        pass
+    class Type:
+        str=0
+        branch=1
+        list=2
     
     Id_Attr={Attr.commid:"command",
             Attr.runmid:"runmode",
@@ -28,33 +31,68 @@ class File(core.fobj):
             Attr.icoid:"icopath",
             Attr.descid:"descript"}
     Needattr=[Attr.commid,Attr.runmid]
-    Attr_types={Attr.commid:str,
-            Attr.runmid:bool,
-            Attr.preid:list,
-            Attr.runpid:str,
-            Attr.icoid:str,
-            Attr.descid:str
+    
+
+    Attr_types={Attr.commid:Type.str,
+            Attr.runmid:Type.branch,
+            Attr.preid:Type.list,
+            Attr.runpid:Type.str,
+            Attr.icoid:Type.str,
+            Attr.descid:Type.str}
+    
+    Attr_Arg={
+        Attr.commid:"-com",
+        Attr.runmid:"-start",
+        Attr.preid:"-pre",
+        Attr.runpid:"-rpath",
+        Attr.icoid:"-ico",
+        Attr.descid:"-desc"
     }
+
     Out_need_attr={Attr.descid}
     def checkNeedful(self):
         for i in self.Needattr:
-            if self.Attr_types[i]!=bool and bool(self.attr.get(i))==False:
+            if self.Attr_types[i]!=self.Type.branch and bool(self.attr.get(i))==False:
                 errmessage="Some necessary attr were not initialized:"
                 for i in self.Needattr:
                     errmessage+=self.Id_Attr[i]+','
                 errmessage=errmessage.rstrip(',')
                 raise core.StoreError(errmessage,core.StoreError.init)
+
+    @staticmethod
+    def make_sub_opt(grp,class_,attrid,**kargs):
+        if class_.Attr_types[attrid]==class_.Type.str:
+            kargs['default']=None
+        elif class_.Attr_types[attrid]==class_.Type.branch:
+            kargs['nargs']='?'
+            kargs['default']=0
+        elif class_.Attr_types[attrid]==class_.Type.list:
+            kargs['nargs']='+'
+            kargs['default']=None
+        grp.add_argument(class_.Attr_Arg[attrid],dest=class_.Id_Attr[attrid],**kargs)
         pass
+
     @staticmethod
     def make_opt(arg:argparse.ArgumentParser):
-        obj=arg.add_argument_group("%s obj"%File.suffix)
-        obj.add_argument("-com",dest=File.Id_Attr[File.Attr.commid],default=None,help="Command executed at runtime")
-        obj.add_argument("-start",dest=File.Id_Attr[File.Attr.runmid],action="store_true",default=False,help="Whether to execute independently")
-        obj.add_argument("-pre",dest=File.Id_Attr[File.Attr.preid],nargs='+',default=None,help="Environment configuration before command execution(Allow multiple)")
-        obj.add_argument("-rpath",dest=File.Id_Attr[File.Attr.runpid],default=None,help="Directory where the command is executed")
-        obj.add_argument("-ico",dest=File.Id_Attr[File.Attr.icoid],default=None,help="Icons of objects in the window")
-        obj.add_argument("-desc",dest=File.Id_Attr[File.Attr.descid],default=None,help="Description of the current object")
-        obj.add_argument("-topath",dest='topath',default=None,help="Object entity storage location")
+        grp=arg.add_argument_group("%s obj"%File.suffix)
+        File.make_sub_opt(grp, File, File.Attr.commid, \
+                    help="Command executed at runtime")
+        
+        File.make_sub_opt(grp, File, File.Attr.runmid, \
+                    help="Whether to execute independently (0: console , 1: window&console , 2: window)")
+        
+        File.make_sub_opt(grp, File, File.Attr.preid, \
+                    help="Environment configuration before command execution(Allow multiple)")
+        
+        File.make_sub_opt(grp, File, File.Attr.runpid, \
+                    help="Directory where the command is executed")
+        
+        File.make_sub_opt(grp, File, File.Attr.icoid, \
+                    help="Icons of objects in the window")
+        
+        File.make_sub_opt(grp, File, File.Attr.descid, \
+                    help="Description of the current object")
+        
     
     @staticmethod 
     def checkname(name):
@@ -63,7 +101,6 @@ class File(core.fobj):
             if i not in legal_char:
                 return False
         return True
-        pass
 
     @staticmethod
     def handle(args):
@@ -78,13 +115,13 @@ class File(core.fobj):
         objtype=core.filetypes[args.type]
         for i in objtype.Id_Attr:
             resval=getattr(args,objtype.Id_Attr[i])
-            if objtype.Attr_types[i]==str:
+            if objtype.Attr_types[i]==objtype.Type.str:
                 if resval==None:
                     resval=""
                 else:
                     resval=resval.replace("'",'"')
                 
-            elif objtype.Attr_types[i]==list:
+            elif objtype.Attr_types[i]==objtype.Type.list:
                 nresval=[]
                 if resval==None or len(resval)==0:
                     nresval=['']
@@ -95,25 +132,24 @@ class File(core.fobj):
                             nresval.append(value)
                 
                 resval=nresval
+            elif objtype.Attr_types[i]==objtype.Type.branch:
+                if resval==None:
+                    resval=1
+                resval=int(resval)
             resarg[objtype.Id_Attr[i]]=resval
-        if args.topath==None:
-            realpath=cfg.defpath
-        else:
-            realpath=args.topath
+
         if obj==None:
             pre,curname=getpre(path+'/'+args.name)
-            obj=objtype(name=curname,path=realpath,**resarg)
+            obj=objtype(name=curname,**resarg)
             pre[curname]=obj
         elif obj.suffix != args.type:
             raise core.StoreError("%s already exists,and that its type is %s ,not %s"%(args.name,obj.suffix,args.type))
         else:
             if args.path!=None and oripath != path :
                 tarname,obj=transfer(oripath+'/'+args.name,path)
-            elif args.topath!=None:
-                obj.moveto(args.topath)
             else:
                 for i in obj.Id_Attr:
-                    if obj.Attr_types[i]==bool or getattr(args,obj.Id_Attr[i])!=None:
+                    if obj.Attr_types[i]==obj.Type.branch or getattr(args,obj.Id_Attr[i])!=None:
                         obj.attr[i]=resarg.get(obj.Id_Attr[i])
                 
             obj.Make()
@@ -123,9 +159,9 @@ class File(core.fobj):
         if len(kargs)==0 and len(args)==1 and type(args[0])==core.fileio:
             self.Parse(args[0])
             return
-        if kargs.get("path")==None or kargs.get('name')==None:
+        if kargs.get('name')==None:
             raise core.StoreError("Build a File object need path,name attr",core.StoreError.init)
-        super().__init__(path=kargs['path'],name=kargs['name'])
+        super().__init__(name=kargs['name'])
         if len(kargs)==2:
             return
         for i in self.Id_Attr:
@@ -135,11 +171,13 @@ class File(core.fobj):
         self.Make()
 
     def checkExist(self,level=1):
-        if self.path==None or type(self.path)!=str or os.path.exists(os.path.join(self.path,self.name+'.'+self.suffix))==False:
+        if  os.path.exists(os.path.join(Cfg.cfg.defpath,self.name+'.'+self.suffix))==False:
             if level==1:
                 raise core.StoreError("The File object is invalid",core.StoreError.Exist)
             return False
         return True
+    
+
     """
         EditComm
         EditIco
@@ -149,26 +187,32 @@ class File(core.fobj):
         编译bat文件开头结尾
     """
     def EditComm(self,file):
-        if self.attr[self.Attr.runmid]==True:
+        get_arg="%*"
+        if self.attr[self.Attr.runmid]==1:
             wmode=f'start "{self.name}" '
+        elif self.attr[self.Attr.runmid]==2:
+            wmode=f"explorer "
+            get_arg=""
         else:
             wmode=""
+            
         wdata=f"""set {self.Id_Attr[self.Attr.runpid]}={self.attr[self.Attr.runpid]}
 set {self.Id_Attr[self.Attr.commid]}={self.attr[self.Attr.commid]}
 set {self.Id_Attr[self.Attr.runmid]}={wmode}
 """
         file.write(wdata)
+        return get_arg
 
     def Make(self):
         if self.is_join_suff:
-            realpath=os.path.join(self.path,self.name+'.'+self.suffix)
+            realpath=os.path.join(Cfg.cfg.defpath,self.name+'.'+self.suffix)
         else:
-            realpath=os.path.join(self.path,self.name)
+            realpath=os.path.join(Cfg.cfg.defpath,self.name)
         batf=open(realpath,'w')
         title="""@echo off
 """
         batf.write(title)
-        self.EditComm(batf)
+        get_arg=self.EditComm(batf)
         predata=""
         if type(self.attr[self.Attr.preid])==str:
             predata=self.attr[self.Attr.preid]
@@ -179,31 +223,16 @@ set {self.Id_Attr[self.Attr.runmid]}={wmode}
             raise core.StoreError("preboot Expected str/bytes type",core.StoreError.VarType)
         if predata.strip()=="":
             predata=""
+        
+
         bann=f"""set currpwd=%CD%
 if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %{self.Id_Attr[self.Attr.runpid]}%)
 {predata}
-%{self.Id_Attr[self.Attr.runmid]}% %{self.Id_Attr[self.Attr.commid]}% %*
+%{self.Id_Attr[self.Attr.runmid]}% %{self.Id_Attr[self.Attr.commid]}% {get_arg}
 if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %currpwd%)"""
         batf.write(bann)
         batf.close()
         pass
-
-    """
-        用于修改名称
-    """
-    def moveto(self,topath:str):
-        self.checkExist()
-        
-        if File.is_join_suff:
-            realname=self.name+'.'+File.suffix
-        else:
-            realname=self.name
-        rtopath=os.path.join(os.path.realpath(topath),realname)
-        if os.path.exists(topath)==False:
-            os.rename(self.path,rtopath)
-            self.path=rtopath
-            return
-        raise core.StoreError("The target location for the move already exists",core.StoreError.Exist)
 
     """
         用于删除对象
@@ -213,27 +242,31 @@ if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %currpwd%)"""
             raise core.StoreError("%s is File,not Dire"%self.name,core.StoreError.missing)
         self.checkExist()
         if self.is_join_suff:
-            realpath=os.path.join(self.path,self.name+'.'+File.suffix)
+            realpath=os.path.join(Cfg.cfg.defpath,self.name+'.'+File.suffix)
         else:
-            realpath=os.path.join(self.path,self.name)
+            realpath=os.path.join(Cfg.cfg.defpath,self.name)
         os.remove(realpath)
-        self.path=None
         return
 
     """
         解析备份文件,获取File对象
     """
 
+    def parse_attr_branch(self,branch):
+        value=0
+        bit=0
+        for i in branch:
+            value|=ord(i)<<bit
+            bit+=8
+        return value
+
     def parse_attr_t(self,attrid,attrdata):
         attrtype=self.Attr_types[attrid]
-        if attrtype==str:
+        if attrtype==self.Type.str:
             self.attr[attrid]=attrdata
-        elif attrtype==bool:
-            if attrdata=="True":
-                self.attr[attrid]=True
-            else:
-                self.attr[attrid]=False
-        elif attrtype==list:
+        elif attrtype==self.Type.branch:
+            self.attr[attrid]=self.parse_attr_branch(attrdata)
+        elif attrtype==self.Type.list:
             if attrdata=='':
                 value=[]
             else:
@@ -254,24 +287,27 @@ if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %currpwd%)"""
     def Parse(self,file:core.fileio):
         name_l=file.ReadByte()
         name=file.Read(name_l).decode("utf-8")
-        path_l=file.ReadWord()
-        zpath=file.Read(path_l)
-        path=zlib.decompress(zpath).decode("utf-8")
-        super().__init__(path=path,name=name)
+        super().__init__(name=name)
         self.Parseattr(file)
 
     """
         Save
         保存命令列表文件
     """
+
+    def save_attr_branch(self,attrdata):
+        value=""
+        while attrdata!=0:
+            value=chr(attrdata&0xff)+value
+            attrdata=attrdata>>8
+        return value
+        
     def save_attr_t(self,attrid,attrdata)->str:
-        if self.Attr_types[attrid]==str:
+        if self.Attr_types[attrid]==self.Type.str:
             return attrdata
-        elif self.Attr_types[attrid]==bool:
-            if attrdata==True:
-                return 'True'
-            return 'False'
-        elif self.Attr_types[attrid]==list:
+        elif self.Attr_types[attrid]==self.Type.branch:
+            return self.save_attr_branch(attrdata)
+        elif self.Attr_types[attrid]==self.Type.list:
             return '\n'.join(attrdata)
         return ''
 
@@ -290,10 +326,31 @@ if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %currpwd%)"""
         wname=self.name.encode("utf-8")
         file.WriteByte(len(wname))
         file.Write(wname)
-        zpath=zlib.compress(self.path.encode("utf-8"))
-        file.WriteWord(len(zpath))
-        file.Write(zpath)
         self.Saveattr(file)
+    
+    def export_attr(self,attrid,attrdata):
+        if self.Attr_types[attrid]==self.Type.str:
+            attr_cache=attrdata.replace('"',"'")
+            attrvalue=f'"{attr_cache}"'
+        elif self.Attr_types[attrid]==self.Type.list:
+            if attrdata==[]:
+                return " "
+            else:
+                attrvalue=""
+                for i in attrdata:
+                    attr_cache=i.replace('"',"'")
+                    attrvalue+=f'"{attr_cache}" '
+        elif self.Attr_types[attrid]==self.Type.banch:
+            attrvalue=attrdata
+        return f" {self.Attr_Arg[attrid]} {attrvalue}"
+
+    def export(self,file:core.fileio,path:str):
+        title=f"helper -n {self.name} -p {path} -t {self.suffix}"
+        for i in self.attr:
+            title+=self.export_attr(i,self.attr[i])
+
+        file.Write(title+'\n')
+        pass
 
     def __str__(self):
         return str(self.name)
@@ -309,19 +366,22 @@ class Dire(core.fobj):
     @staticmethod
     def make_opt(arg:argparse.ArgumentParser):
         note=arg.add_argument_group("%s"%Dire.suffix)
-        note.add_argument("-topath",dest='topath',default=None,help="Object entity storage location")
+        note.add_argument("-rename",dest="is_rename",action="store_true",default=False,help="rename current node")
+        # note.add_argument("-topath",dest='topath',default=None,help="Object entity storage location")
 
     @staticmethod
     def handle(args):
-        obj,_=checkexists(args.name)
-        if obj==None:
-            pre,curname=getpre(args.name)
+        if args.is_rename==False:
+            path=(args.path+'/'+args.name).strip('/')
+        else:
+            path=args.name
+        obj,_=checkexists(path)
+        if obj==None and args.is_rename==False:
+            pre,curname=getpre(path)
             pre[curname]=core.filetypes[args.type](name=curname)
         elif obj.suffix!=args.type:
             raise core.StoreError("%s already exists,and that its type is %s ,not %s"%(args.name,obj.suffix,args.type))
-        elif args.topath!=None:
-            obj.moveto(args.topath)
-        elif args.path!=None:
+        elif args.path!=None and args.is_rename==True:
             transfer(args.name,args.path)
             pass
         else:
@@ -334,7 +394,7 @@ class Dire(core.fobj):
             return
         if kargs.get('name')==None:
             core.StoreError("Build a File object need name attr",core.StoreError.init)
-        super().__init__(None,name=kargs['name'])
+        super().__init__(name=kargs['name'])
 
     def remove(self,key=None):
         if key==None:
@@ -361,18 +421,6 @@ class Dire(core.fobj):
         else:
             raise core.StoreError("The type of key needs to be str",core.StoreError.args)
     
-    @staticmethod
-    
-
-    def moveto(self,topath):
-        topath=os.path.realpath(topath)
-        if os.path.exists(topath)==False:
-            MakeDir(topath)
-        
-        for v in self.attr.values():
-            v.moveto(topath)
-            pass
-
     def ParseAttr(self,file:core.fileio):
         attrlen=file.ReadWord()
         i=0
@@ -406,6 +454,20 @@ class Dire(core.fobj):
         self.SaveAttr(file)
         pass
     
+    def export(self,file:core.fileio,path:str):
+        if self.name!='/':
+            file.Write(f"helper -n {self.name} -p {path} -t {self.suffix}\n")
+            name=self.name
+        else:
+            path=""
+            name=""
+        if path=='/':
+            path=''
+        for obj in self.attr.values():
+            obj.export(file,path+'/'+name)
+
+        file.flush()
+
     def __str__(self):
         return str(self.attr)
 
@@ -444,7 +506,7 @@ class Dire(core.fobj):
     def pop(self,key):
         return self.attr.pop(key)
 
-
+    
     @staticmethod
     def iter(objset):
         for i in objset.attr:

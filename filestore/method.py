@@ -3,6 +3,17 @@ from filestore.core import StoreError
 import os
 
 
+
+
+def split_path(path):
+    if path[0]=='/':
+        path=path[1:]
+    path_split=path.split('/')
+    parent_path='/'.join(path_split[:-1])
+    current_name=path_split[-1]
+
+    return parent_path,current_name
+
 def checkdire(name):
     if name[0]=='/':
         name=name[1:]
@@ -15,13 +26,13 @@ def checkdire(name):
             return None
     return node
 
-
 def get_path(stack,node):
-    path=node.name
+    path=""
     for i in stack:
         if i[0].name=='/':
             continue
-        path=i[0].name+'/'+path
+        path=path+'/'+i[0].name
+    path+='/'+node.name
     return path
 
 def checkexists(name,path=None):
@@ -36,21 +47,21 @@ def checkexists(name,path=None):
     
     stack=[]
     node=filestore.filesystem.fileroot
-    i=0
+    node_ind=0
     while True:
-        if i<len(node):
-            if node[i].tid!=0:
-                if node[i].name==name:
-                    return node[i],get_path(stack,node)
+        if node_ind<len(node):
+            if node[node_ind].tid!=0:
+                if node[node_ind].name==name:
+                    return node[node_ind],get_path(stack,node)
             else:
-                stack.append((node,i+1))
-                node=node[i]
-                i=-1
-        i+=1
-        if i>=len(node):
+                stack.append((node,node_ind+1))
+                node=node[node_ind]
+                node_ind=-1
+        node_ind+=1
+        if node_ind>=len(node):
             if len(stack)==0:
                 break
-            node,i=stack.pop()
+            node,node_ind=stack.pop()
     return None,None
 
 
@@ -76,8 +87,9 @@ def transfer(oripath,target):
     tarpre,tarname=getpre(target)
     tarobj,tarpath=checkexists(tarname,'/'.join(target.split('/')[:-1]))
     oriobj=oripre[oriname]
+    if oriobj==None:
+        raise StoreError("error",1)
     if tarobj!=None and tarobj!=oriobj:
-        
         oriroute=os.path.join(oriobj.path,oriname+'.'+oriobj.suffix)
         tarroute=os.path.join(oriobj.path,tarname+'.'+oriobj.suffix)
         if tarobj.tid!=0:
@@ -94,12 +106,11 @@ def transfer(oripath,target):
     
     if tarpre==oripre and oriname==tarname :
         return oriname,oriobj
-    
     tarpre[tarname]=oriobj
     tarpre[tarname].name=tarname
     oripre.pop(oriname)
     return tarname,tarpre[tarname]
-    pass
+
 def MakeDir(path):
         dlist=[]
         while True:
