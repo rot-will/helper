@@ -1,8 +1,8 @@
 import filestore.filesystem
 import argparse
-import config.config as config
+import core.config as config
 import display 
-import init
+import core.init as init 
 
 def make_type_help(types:dict):
     default=config.cfg.deftype
@@ -20,6 +20,7 @@ def make_opt(arg:argparse.ArgumentParser):
     arg.add_argument("-p",dest="path",type=str,default=None,help="The location of the object/note")
     arg.add_argument("-d",'-del',dest="delete",type=str,default=None,help="Delete object/note (/???/???/???)")
     arg.add_argument("-clear",dest="clear",default=False,action="store_true",help="clear error objs")
+    arg.add_argument("-remake",dest="remake",default=False,action="store_true",help="remake objs and clear error objs")
     arg.add_argument("-dis",dest='display',type=str,default='con',help="Select display mode (default: con  optional: con/win)")
 
 def print_help(args,arg:argparse.ArgumentParser):
@@ -42,6 +43,8 @@ def main():
         print_help(args,arg)
     elif args.clear==True:
         filestore.filesystem.clear_error()
+    elif args.remake==True:
+        filestore.filesystem.remake()
     elif bool(args.name):
         if bool(args.type)==False:
             type=config.cfg.deftype

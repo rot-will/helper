@@ -1,7 +1,7 @@
 import filestore.core as core
 import os,zlib
 from filestore.method import checkexists,transfer,getpre,MakeDir
-from config.config import cfg
+from core.config import cfg
 import argparse
 """
 作为文件父类
@@ -177,12 +177,13 @@ set {self.Id_Attr[self.Attr.runmid]}={wmode}
                 predata+=i+'\n'
         else:
             raise core.StoreError("preboot Expected str/bytes type",core.StoreError.VarType)
+        if predata.strip()=="":
+            predata=""
         bann=f"""set currpwd=%CD%
 if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %{self.Id_Attr[self.Attr.runpid]}%)
 {predata}
 %{self.Id_Attr[self.Attr.runmid]}% %{self.Id_Attr[self.Attr.commid]}% %*
-if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %currpwd%)
-"""
+if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %currpwd%)"""
         batf.write(bann)
         batf.close()
         pass

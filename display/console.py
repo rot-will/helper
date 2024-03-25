@@ -1,4 +1,4 @@
-import config.config as config
+import core.config as config
 import filestore.filesystem
 from filestore.filesystem import search,get_objs,clear_empty,get_attr,get_need_attr,get_maxpad
 

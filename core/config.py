@@ -6,6 +6,7 @@ from information.log import log
 log_title="cfg"
 class CfgExce(Exception):
     parse=0
+    argerror=1
     def __init__(self,message,id):
         super(CfgExce,self).__init__()
         self.ErrorMessage=message
@@ -150,6 +151,15 @@ def make_defcfg():
     defconfig['defpath']=os.path.join(sys.path[0],'objs')
     pass
 
+def make_must_cfg():
+    if os.path.exists(cfg.defpath):
+        if not os.path.isdir(cfg.defpath):
+            raise CfgExce("defpath not direction",CfgExce.argerror)
+    else:
+        os.mkdir(cfg.defpath)
+        pass
+    pass
+
 def checkcfg():
     make_defcfg()
     status=False
@@ -166,6 +176,8 @@ def checkcfg():
                 cfg[i]=defconfig[i]
     if status:
         savecfg()
+    
+    make_must_cfg()
 
 def init():
     parsecfg()

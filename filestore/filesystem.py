@@ -2,7 +2,8 @@ import os,sys
 import filestore.core as core
 import filestore.store as store
 import filestore.method as method
-import config.config as config
+import core.config as config
+import core.args as args
 from information.log import log
 
 log_title="filesystem"
@@ -89,7 +90,9 @@ def load_fileplugin():
         return
     fplugins=os.listdir(fpluginpath)
     for i in fplugins:
-        pluginpath=os.path.join(fpluginpath,i)
+        if '.py' in i[-3:]:
+            i=i[:-3]
+        pluginpath=os.path.join("filestore/plugin",i)
         __import__(pluginpath)
     pass
 
@@ -179,7 +182,24 @@ def search(root,search_str=None,note=False):
 
     pass
 
+def remake():
+    clear_error()
+    def makeargs(obj):
+        result=args.args()
+        for i in obj.Id_Attr:
+            result[obj.Id_Attr[i]]=obj.attr[i]
+            pass
+        result.name=obj.name
+        result.type=obj.suffix
+        return result
+        pass
+    objs=get_objs(fileroot)
+    for obj in objs:
+        obj.__class__.handle(makeargs(obj))
+    pass
+
 def clear_empty(notes):
+    
     stack=[]
     curr_note=notes
     curr_objs=False
@@ -275,3 +295,4 @@ def clear_error():
             curr_note,i=stack.pop()
         pass
     save()
+    
