@@ -1,59 +1,43 @@
 import os
 
+class file(str):
+    def __init__(self,path,hide,name):
+        self.hide=hide
+
+    def __new__(self,path,hide,name):
+        return str.__new__(self,path+'\\'+name+'.bat')
     
-def updir(root_path,ddict,filelist,tools_env,cmd,path,dict_path,is_creat=False,is_hide=False,Is_hide=False):
-    cache=os.listdir(path)
-    exec("%s={}"%cmd)
+def updir(root_path,ddict,filelist,is_creat=False,is_hide=False,Is_hide=False):
+    cache=os.listdir(root_path)
     dircache=[]
     for i in cache:
-        if os.path.isfile(path+'/'+i):
+        if os.path.isfile(root_path+'\\'+i):
             if i[-4:]!='.bat':
                 continue
-            exec("%s['%s']=1"%(cmd,i))
-            i=i[:i.rfind('.')]
-            filelist[i]=[path,Is_hide]
+            ddict[i]=1
+            i=i[:i.find('.')]
+            filelist[i]=file(root_path,Is_hide,i)
         else:
             dircache.append(i)
     for i in dircache:
-        if is_creat:
-            if ' ' in path+'\\'+i:
-                tools_env.append('"%s"'%(path+'\\'+i)+';')
-            else:
-                tools_env.append(path+'\\'+i+';')
-        getdirlist(root_path,ddict,filelist,tools_env,dict_path+'$'+i,is_creat,is_hide=is_hide,Is_hide=Is_hide)
+        ddict[i]={}
+        R_hide=Is_hide
+        if i=='hide' and is_hide:
+            Is_hide=True
+        updir(root_path+'\\'+i,ddict[i],filelist,is_creat,is_hide,Is_hide)
+        Is_hide=R_hide
             
-def getdirlist(root_path,ddict,filelist,tools_env,path='',is_creat=False,is_hide=False,Is_hide=False):
+def getdirlist(root_path,ddict,filelist,is_creat=False,is_hide=False,Is_hide=False):
+    ddict['/']={}
+    updir(root_path,ddict['/'],filelist,is_creat=is_creat,is_hide=is_hide,Is_hide=Is_hide)
+    tools_env=[]
+    getenv(ddict['/'],root_path,tools_env)
+    return ';'.join(tools_env)
 
-    if path:
-        cmd='ddict'
-        for i in path.split('$'):
-            if i:
-                cmd+='["%s"]'%i
-            else:
-                cmd+='["/"]'
-        real_path=root_path+path.replace('$','\\')
-        updir(root_path,ddict,filelist,tools_env,cmd,real_path,path,is_creat=is_creat,is_hide=is_hide,Is_hide=Is_hide)
-    else:
-        ddict['/']={}
-        cache=os.listdir(root_path)
-        dircache=[]
-        for i in cache:
-            if os.path.isfile(root_path+'\\'+i):
-                if i[-4:]!='.bat':
-                    continue
-                ddict['/'][i]=1
-                i=i[:i.find('.')]
-                filelist[i]=[root_path,Is_hide]
-            else:
-                dircache.append(i)
-        for i in dircache:
-            if is_creat:
-                if ' ' in root_path+'\\'+i:
-                    tools_env.append('"%s"'%(root_path+'\\'+i)+';')
-                else:
-                    tools_env.append(root_path+'\\'+i+';')
-            if i=='hide' and is_hide:
-                Is_hide=True
-            getdirlist(root_path,ddict,filelist,tools_env,'$'+i,is_creat,is_hide,Is_hide)
-            Is_hide=False
+def getenv(ddict,path,tools_env):
+    for i in ddict:
+        if ddict[i] != 1:
+            spath=f"{path}\\{i}"
+            tools_env.append(spath)
+            getenv(ddict[i],spath,tools_env)
                 

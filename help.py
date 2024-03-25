@@ -1,4 +1,3 @@
-
 from winhelper.edit import *
 from winhelper.func import *
 from winhelper.env import *
@@ -9,7 +8,6 @@ import colorama
 
 
 ddict={}
-tools_env=[root_path]
 filelist={}
 
 def help(parse : argparse.ArgumentParser):
@@ -20,6 +18,8 @@ def help(parse : argparse.ArgumentParser):
     parse.add_argument('-out',dest='out_command',help="View the contents of the command")
     parse.add_argument('-oall',dest='out_comm_info',action='store_true',default=False,help="View the all contents of the command")
     parse.add_argument('-noc',dest='num_col',type=int,default=8,help="Number of columns")
+    parse.add_argument('-nor',dest="num_row",type=int,default=20,help="Number of rows")
+    parse.add_argument('-nos',dest="num_span",type=int,default=8,help="Number of output span")
     parse.add_argument('-win',dest="Is_Win",action='store_true',default=False,help="Using the Window Interface") # 还没实现
 
     """ search """
@@ -29,6 +29,7 @@ def help(parse : argparse.ArgumentParser):
     """ command_data """
     parse.add_argument('-d','--direct',dest='direct',default='',help='Specify command')
     parse.add_argument('-r','--represent',dest='represent',default='',help="command note")
+    parse.add_argument('-ico','--ico',dest='ico',default='',help="Use as an icon in the window")
     parse.add_argument('-precom',dest='precom',help='Pre-executed commands to set the environment')
     parse.add_argument('-tardir',dest='target_dir',help="Specify target program directory")
     parse.add_argument('-start',dest='is_start',action='store_false', default=True,help="Do you want to use start to launch exe")
@@ -52,11 +53,10 @@ def main():
     parse=argparse.ArgumentParser('help')
     help(parse)
     args=parse.parse_args()
-    getdirlist(root_path,ddict,filelist,tools_env,is_creat=args.is_creat,is_hide=args.is_hide)
+    tools_env=getdirlist(root_path,ddict,filelist,is_creat=args.is_creat,is_hide=args.is_hide)
     if args.Is_Win:
-        whelp.wmain(root_path,ddict,filelist,tools_env,var_name)
+        whelp.wmain(root_path,ddict,filelist,var_name)
         return
-    
     colorama.init(autoreset=True)
     if args.is_creat:
         setenv(tools_env,var_name)
@@ -64,24 +64,24 @@ def main():
     if args.show_type:
         parse.print_help()
         print("\n--------------- view Type ---------------\n")
-        print(showdict(ddict,'',is_show_file=False)[1])
+        out_command(showdict(ddict,is_show_file=False))
         return
     elif args.del_dire:
         delete(root_path,filelist,args.del_dire)
     elif args.add_dire:
-        create(root_path,ddict,filelist,tools_env,var_name,args.add_dire)
+        create(root_path,ddict,var_name,args.add_dire)
     elif args.redir:
-        create(root_path,ddict,filelist,tools_env,var_name,args.name,args.redir)
+        create(root_path,ddict,var_name,args.name,args.redir)
     elif args.name:
         if (not (args.direct or args.type or args.is_re)):
             exit("When name exists, direct is required")
-        addbat(root_path,ddict,filelist,args.name,args.direct,args.type,args.precom,args.target_dir,args.represent,args.is_start,args.is_re)
+        addbat(root_path,ddict,filelist,args.name,args.direct,args.type,args.precom,args.target_dir,args.represent,args.is_start,args.ico,args.is_re)
     elif args.out_command:
-        coms=showdict(ddict,'',args.search_str,is_dire=True,hide=args.is_hide,num_col=args.num_col,Only_Name=True)[1]
-        OutCommands(filelist,coms,args.out_command,args.out_comm_info)
+        coms=showdict(ddict,search_str=args.search_str,is_dire=True,hide=args.is_hide,Only_file=True)
+        OutCommands(filelist,coms,args.out_command,args.out_comm_info,args.num_row)
     else:
-        coms=showdict(ddict,'',args.search_str,is_dire=args.is_dire,hide=args.is_hide,num_col=args.num_col)[1]
-        out_command(coms.strip())
+        coms=showdict(ddict,search_str=args.search_str,is_dire=args.is_dire,hide=args.is_hide)
+        out_command(coms,args.num_row,args.num_col,args.num_span)
 
 if __name__=='__main__':
     main()

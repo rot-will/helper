@@ -1,18 +1,17 @@
 from winhelper.func import *
 from winhelper.env import *
-
 import os
 comm_orig=['@echo off','cd /d %sour_dir%','set sour_dir=%CD%','']
-def editbat(root_path,name,cmd,path,precom,real_dir,represent,is_start):
-    file_path=root_path+'\\'+path+'\\'+name+'.bat'
-    bat_file=open(file_path,'wb')
+def editbat(cmd,path,precom,real_dir,represent,is_start,ico):
+    bat_file=open(path,'wb')
     try:
         pad='%c% %*\r\n'
         cmd_line='set c='
         direct=comm_orig[0]+'\r\n'
         cd_dir=""
         return_dir=""
-        des_line='set des=%s'%represent
+        des_line='set des=%s\r\n'%represent
+        ico_line='set ico=%s'%ico
         if real_dir:
             return_dir=comm_orig[1]+'\r\n'
             #cd_dir+=comm_orig[3]+'\r\n'+comm_orig[4]+'\r\n'
@@ -36,12 +35,12 @@ def editbat(root_path,name,cmd,path,precom,real_dir,represent,is_start):
             if '%*' in cmd:
                 pad='%c% \r\n'
             cmd_line+=cmd
-        direct=direct+cd_dir+cmd_line+'\r\n'+precommand+'\r\n'+pad+return_dir+des_line
+        direct=direct+cd_dir+cmd_line+'\r\n'+precommand+'\r\n'+pad+return_dir+des_line+ico_line
         direct=direct.strip()
         bat_file.write(direct.encode('gbk'))
     except Exception as e:
         bat_file.close()
-        os.remove(file_path)
+        os.remove(path)
         return -1
     return 
 
@@ -97,20 +96,19 @@ def getpaths(dire_={},name="",curr_dire=''):
                     continue
             result.append(curr_dire+'/'+raw_name)
     return result
-                
 
-
-def addbat(root_path,ddict,filelist,name,cmd='',path='',precom='',real_dir='',represent='',is_start=True,is_re=False):
+def addbat(root_path,ddict,filelist,name,cmd='',path='',precom='',real_dir='',represent='',is_start=True,ico='',is_re=False):
     path_1=Sel_Path(getpaths(ddict['/'],path))
     if path and path_1==False:
         exit("%s not found"%path)
     else:
         path=path_1
+        save_path=f"{root_path}\\{path}\\{name}.bat"
     if is_re:
         #if path and cmd:
         #    exit("Only command contents or command directories can be replaced")
         try:
-            cmd_c,des,precom_,is_start_c,real_dir_c=get_cmd_info(filelist[name][0]+'\\'+name+'.bat')
+            cmd_c,des,precom_,is_start_c,real_dir_c,ico_c=get_cmd_info(filelist[name])
         except KeyError:
             print("Not found %s \\ %s"%(name,path))
             exit(0)
@@ -122,6 +120,8 @@ def addbat(root_path,ddict,filelist,name,cmd='',path='',precom='',real_dir='',re
             represent=des
         if not cmd:
             cmd=cmd_c
+        if not ico:
+            ico=ico_c
         if real_dir==None:
             real_dir=real_dir_c
         if precom==None:
@@ -134,15 +134,15 @@ def addbat(root_path,ddict,filelist,name,cmd='',path='',precom='',real_dir='',re
             elif os.path.isfile(root_path+'\\'+path+'.bat'):
                 exit("There are duplicate options")
             if not os.path.isfile(root_path+'\\'+path+'.bat'):
-                os.rename(filelist[name][0]+'\\'+name+'.bat',root_path+'\\'+path+'.bat')
+                os.rename(filelist[name],root_path+'\\'+path+'.bat')
                 return 0
         
-        path=filelist[name][0][len(root_path)+1:]
+        save_path=filelist[name]
     elif name in filelist:
         exit("There are duplicate options")
-    status=editbat(root_path,name,cmd,path,precom,real_dir,represent,is_start)
+    status=editbat(cmd,save_path,precom,real_dir,represent,is_start,ico)
     if status==-1 and is_re:
-        editbat(root_path,cmd_c,path,precom_,real_dir_c,des,is_start_c)
+        editbat(cmd_c,save_path,precom_,real_dir_c,des,is_start_c,ico_c)
 
 def redir(root_path,source,target):
     if not source:
@@ -168,36 +168,48 @@ def delete(root_path,filelist,path):
     elif os.path.isfile(root_path+'/'+path+'.bat'):
         os.remove(root_path+'/'+path+'.bat')
     elif filelist[path]:
-        os.remove(filelist[path][0]+'/'+path+'.bat')
+        os.remove(filelist[path])
     else:
         exit('The command or directory does not exist')
 
 
 def setenv(tools_env,var_name):
-    os.popen('@echo off && setx %s %s'%(var_name,';'.join(tools_env).strip(';')))
+    os.popen('@echo off && setx %s %s'%(var_name,tools_env))
     print('[+] save success')
 
 def movdir(path,redir):
     os.rename(path,redir)
-            
-            
 
-def create(root_path,ddict,filelist,tools_env,var_name,path,redir=""):
+
+
+
+def create(root_path,ddict,var_name,path,redir=""):
     real_path=root_path
     if (redir!='' and os.path.isdir(real_path+'/'+redir) ) or (redir=='' and os.path.isdir(real_path+'/'+path)):
         exit("The specified destination is occupied by the directory")
     elif (redir=='' and os.path.isfile(real_path+'/'+path+'.bat')) or (redir!='' and os.path.isfile(real_path+'/'+redir+'.bat')):
         exit('The specified target is occupied by the command')
+    cddict=ddict['/']
+    fcddict=ddict
+    srcdire=path.split('/')[-1]
+    for i in path.split('/'):
+        real_path+='/'+i
+        if not os.path.isdir(real_path):
+            os.mkdir(real_path)
+            cddict[i]={}
+        fcddict=cddict
+        cddict=cddict[i]
+        
     if redir!='':
-        for i in redir.split('/')[:-1]:
-            real_path+='/'+i
-            if not os.path.isdir(real_path):
-                os.mkdir(real_path)
+        tddict=ddict['/']
+        todire=path.split('/')[-1]
+        for i in path.split('/')[:-1]:
+            if tddict.get[i]:
+                tddict[i]={}
+            tddict=tddict[i]
+        tddict[todire]=cddict
+        fcddict.pop(srcdire)
         movdir(root_path+'/'+path,root_path+'/'+redir)
-    else:
-        for i in path.split('/'):
-            real_path+='/'+i
-            if not os.path.isdir(real_path):
-                os.mkdir(real_path)
-    getdirlist(root_path,ddict,filelist,tools_env,is_creat=True)
-    setenv(tools_env,var_name)
+    tools_env=[]       
+    getenv(ddict,root_path,tools_env)
+    setenv(';'.join(tools_env),var_name)
