@@ -87,6 +87,7 @@ def showdict(dir_dict,pad="",search_str="",is_show_file=True,is_dire=False,dire_
     n=0
     cache=''
     file_cache=""
+    dire_cache=""
     file_num=0
     file_for=file_color+'{}'+back_color+' / '
     dire_for='\n{}'+"*- "+dire_color+'{}'+back_color
@@ -103,9 +104,6 @@ def showdict(dir_dict,pad="",search_str="",is_show_file=True,is_dire=False,dire_
                 file_num+=1
                 file_cache+="%s / "%(file_color+i+back_color)
                 n=n+1
-                    
-                
-                    
         else:
             if ('hide' in i and hide) or ('real_hide' in i):
                 continue
@@ -116,14 +114,14 @@ def showdict(dir_dict,pad="",search_str="",is_show_file=True,is_dire=False,dire_
             else:
                 n_1,cache_1=showdict(dir_dict[i],pad+'  ',search_str,is_show_file,is_dire,-1,hide,num_col)
             if n_1!=0 or search_str=='':
-                cache+=dire_for.format(pad,i)+cache_1
+                dire_cache+=dire_for.format(pad,i)+cache_1
                 #cache+="\n%s*- %s"%(pad,dire_color+i+back_color)+cache_1
                 n=n+1
     if file_cache=="":
         file_cache=''
     else:
         file_cache="\n"+pad+'+-- '+file_cache[:-3]
-    cache=cache+file_cache
+    cache=file_cache+dire_cache
     return n,cache
 
 def get_cmd_info(path):
@@ -346,7 +344,7 @@ def main():
         print(showdict(ddict,'',is_show_file=not args.show_type)[1])
         exit(0)
     elif args.name:
-        if (not (args.direct or args.type  or args.is_re)):
+        if (not (args.direct or args.type or args.is_re)):
             exit("When name exists, direct is required")
         addbat(args.name,args.direct,args.type,args.target_dir,args.represent,args.is_start,args.is_re)
     elif args.del_dire:
