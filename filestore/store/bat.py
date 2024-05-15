@@ -115,7 +115,7 @@ class File(core.fobj):
                 if resval==None:
                     resval=""
                 else:
-                    resval=resval.replace("'",'"')
+                    resval=resval.replace('"','""')
                 
             elif objtype.Attr_types[i]==core.attrType.list:
                 nresval=[]
@@ -123,7 +123,7 @@ class File(core.fobj):
                     nresval=['']
                 else:
                     for o in resval:
-                        value=o.replace("'",'"')
+                        value=o#.replace('"','""')
                         if value!='':
                             nresval.append(value)
                 
@@ -193,7 +193,7 @@ class File(core.fobj):
             wmode=""
             
         wdata=f"""set {self.Id_Attr[self.Attr.runpid]}={self.attr[self.Attr.runpid]}
-set {self.Id_Attr[self.Attr.commid]}={self.attr[self.Attr.commid]}
+set "{self.Id_Attr[self.Attr.commid]}={self.attr[self.Attr.commid]}"
 set {self.Id_Attr[self.Attr.runmid]}={wmode}
 """
         file.write(wdata)
@@ -206,6 +206,7 @@ set {self.Id_Attr[self.Attr.runmid]}={wmode}
             realpath=os.path.join(Cfg.cfg.bat.defpath,self.name)
         batf=open(realpath,'w')
         title="""@echo off
+setlocal enabledelayedexpansion 
 """
         batf.write(title)
         get_arg=self.EditComm(batf)
@@ -225,8 +226,11 @@ set {self.Id_Attr[self.Attr.runmid]}={wmode}
 if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %{self.Id_Attr[self.Attr.runpid]}%)
 {predata}
 %{self.Id_Attr[self.Attr.runmid]}% %{self.Id_Attr[self.Attr.commid]}% {get_arg}
-if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %currpwd%)"""
+if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %currpwd%)
+"""
+        
         batf.write(bann)
+        batf.write("endlocal")
         batf.close()
         pass
 
@@ -238,7 +242,7 @@ if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %currpwd%)"""
             raise core.StoreError("%s is File,not Dire"%self.name,core.StoreError.missing)
         self.checkExist()
         if self.is_join_suff:
-            realpath=os.path.join(Cfg.cfg.bat.defpath,self.name+'.'+self.suffix)
+            realpath=os.path.join(Cfg.cfg.bat.defpath,self.name+'.'+File.suffix)
         else:
             realpath=os.path.join(Cfg.cfg.bat.defpath,self.name)
         os.remove(realpath)
@@ -326,7 +330,7 @@ if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %currpwd%)"""
     
     def export_attr(self,attrid,attrdata):
         if self.Attr_types[attrid]==core.attrType.str:
-            attr_cache=attrdata.replace('"',"'")
+            attr_cache=attrdata.replace('"','""')
             attrvalue=f'"{attr_cache}"'
         elif self.Attr_types[attrid]==core.attrType.list:
             if attrdata==[]:
@@ -334,7 +338,7 @@ if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %currpwd%)"""
             else:
                 attrvalue=""
                 for i in attrdata:
-                    attr_cache=i.replace('"',"'")
+                    attr_cache=i.replace('"','""')
                     attrvalue+=f'"{attr_cache}" '
         elif self.Attr_types[attrid]==core.attrType.banch:
             attrvalue=attrdata
