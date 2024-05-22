@@ -115,7 +115,7 @@ class File(core.fobj):
                 if resval==None:
                     resval=""
                 else:
-                    resval=resval.replace('"','""')
+                    resval=resval.replace('"','^"')
                 
             elif objtype.Attr_types[i]==core.attrType.list:
                 nresval=[]
@@ -330,7 +330,7 @@ if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %currpwd%)
     
     def export_attr(self,attrid,attrdata):
         if self.Attr_types[attrid]==core.attrType.str:
-            attr_cache=attrdata.replace('"','""')
+            attr_cache=attrdata.replace('"','^"')
             attrvalue=f'"{attr_cache}"'
         elif self.Attr_types[attrid]==core.attrType.list:
             if attrdata==[]:
@@ -338,7 +338,7 @@ if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %currpwd%)
             else:
                 attrvalue=""
                 for i in attrdata:
-                    attr_cache=i.replace('"','""')
+                    attr_cache=i.replace('"','^"')
                     attrvalue+=f'"{attr_cache}" '
         elif self.Attr_types[attrid]==core.attrType.banch:
             attrvalue=attrdata
