@@ -1,5 +1,13 @@
 经过迭代之后，现在的helper工具不仅仅能用来管理windows中的命令，根据自定义插件可以用于任何系统，也可以用来管理文档等各种功能
 不过这只是我认为的，有任何意见与问题请您将其提出来
+
+## 迁移数据
+### 3.x -> 4.0
+
+1. 使用`python3 helper.py -export export.txt /`导出命令，之后使用4.0版本的helper执行导出的命令
+2. 取消filestore/filesystem.py的第71-72行的注释，之后使用4.0版本随意创建一个节点，创建节点之后将71-72行注释或删除即可
+
+
 ## 参数详情
 ```shell
 usage: helper.py [-h] [-n NAME] [-t TYPE] [-p PATH] [-d DELETE] [-clear] [-dis DISPLAY] [-row ROWNUM] [-s SEARCH]

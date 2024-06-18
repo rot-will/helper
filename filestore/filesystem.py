@@ -6,6 +6,7 @@ import filestore.core as core
 #import core.config as config
 import core.args as args
 from information.log import log
+import zlib
 
 log_title="filesystem"
 fileroot:core.fobj=None
@@ -14,7 +15,6 @@ def checkinit():
         raise core.StoreError("The filesystem is not initialized",core.StoreError.init)
 
 def map_types()->dict[str,core.fobj]:
-    checkinit()
     types={}
     typel:list[type[core.fobj]]=list(core.Storetypes.values())
 
@@ -28,27 +28,73 @@ def map_types()->dict[str,core.fobj]:
 parse_status=0
 
 
-def parse_(fio):
-    tid=fio.ReadByte()
-    return core.Storetypes[tid](fio)
 
-def parse(file:str):
+def parse_name(file:core.fileio):
+    tid=file.ReadByte()
+    name_l=file.ReadNumber()
+    name=file.Read(name_l).decode("utf-8")
+    return core.Storetypes[tid](name=name)
+
+def parse_object(obj,file:core.fileio):
+    attrnum=file.ReadNumber()
+    i=0
+    while i<attrnum:
+        attrsize=file.ReadWord()
+        zattrdata=file.Read(attrsize)
+        attrdata=zlib.decompress(zattrdata).decode("utf-8")
+        attrid=file.ReadByte()
+        obj.attr[attrid]=core.attrType.parse(obj.Attr_types[attrid],attrdata)
+        i+=1
+    
+
+def parse_names(file:core.fileio,parent=None):
+    if parent==None:
+        parent=parse_name(file)
+    objnum=file.ReadNumber()
+    i=0
+    while i<objnum:
+        obj=parse_name(file)
+        if obj.tid==0:
+            parse_names(file,obj)
+        parent[obj.name]=obj
+        i+=1
+    return parent
+def parse_attributes(node,file):
+    for attrname in node:
+        if node[attrname].tid==0:
+            parse_attributes(node[attrname],file)
+        else:
+            parse_object(node[attrname],file)
+    pass
+
+def parse_(fio:core.fileio,status):
+    # tid=fio.ReadByte()
+    # return core.Storetypes[tid](fio)
+
+    store=parse_names(fio)
+    if status:
+        parse_attributes(store,fio)
+    return store
+
+def parse(file:str,status=True):
     fio=core.fileio(file,'rb')
     try:
-        root=parse_(fio)
+        root=parse_(fio,status)
     except core.FileExec as e:
         if type(file)!=str:
             raise core.StoreError("Second attempt failed",core.StoreError.init)
-        parse_status=1
         bak=file+'.bak'
         if os.path.exists(bak):
             fio.close()
+            if os.path.exists(file+'.error'):
+                os.remove(file+'.error')
+            os.rename(file,file+'.error')
+            os.rename(bak,file)
             log("Failed to parse %s, attempting to backup files %s soon"%(file,bak),0,log_title)
             try:
-                fio=core.fileio(bak,'rb')
-                root=parse_(fio)
+                fio=core.fileio(file,'rb')
+                root=parse_(fio,status)
             except core.StoreError:
-                parse_status=2
                 log("Failed to parse %s and %s, A new data file will be created soon"%(file,bak),0,log_title)
                 root=core.Storetypes[0](name='/')
         else:
@@ -58,19 +104,55 @@ def parse(file:str):
     fio.close()
     return root
 
+def save_name(obj,file:core.fileio):
+    file.WriteByte(obj.tid)
+    wname=obj.name.encode("utf-8")
+    file.WriteNumber(len(wname))
+    file.Write(wname)
+
+def save_object(obj:core.fobj,file:core.fileio):
+    attrnum=len(obj.attr)
+    file.WriteNumber(attrnum)
+    for attrid in obj.attr:
+        attrvalue:str=core.attrType.save(obj.Attr_types[attrid],obj.attr[attrid])
+        zattrdata=zlib.compress(attrvalue.encode("utf-8"))
+        file.WriteWord(len(zattrdata))
+        file.Write(zattrdata)
+        file.WriteByte(attrid)
+
+def save_names(node,file:core.fileio):
+    save_name(node,file)
+    file.WriteNumber(len(node))
+    for objname in node:
+        if node[objname].tid==0:
+            save_names(node[objname],file)
+        else:
+            save_name(node[objname],file)
+
+def save_attribute(node,file:core.fileio):
+    for objname in node:
+        if node[objname].tid==0:
+            save_attribute(node[objname],file)
+        else:
+            save_object(node[objname],file)
+    pass
 def save_(file:str,store:core.fobj):
     if store==None:
         return
     fio=core.fileio(file,"wb")
-    store.Save(fio)
+    save_names(store,fio)
+    save_attribute(store,fio)
     fio.close()
 
 def save():
-    
     backfilestore()
     file=os.path.join(sys.path[0],'helper2.hfg')
     save_(file,fileroot)
     pass
+
+
+
+
 
 def backfilestore():
     hfg=os.path.join(sys.path[0],'helper2.hfg')
@@ -118,13 +200,17 @@ def init():
     load_fileplugin()
     
     hfgpath=os.path.join(sys.path[0],'helper2.hfg')
-    if os.path.exists(hfgpath):
-        fileroot=parse(hfgpath)
-    else:
+    if not os.path.exists(hfgpath):
         fileroot=core.Storetypes[0](name='/')
         save()
     core.filetypes=map_types()
-    
+
+def init_filestore(status):
+
+    global fileroot
+    hfgpath=os.path.join(sys.path[0],'helper2.hfg')
+
+    fileroot=parse(hfgpath,status)
 
 def make_filesystem(arg,objtype:type[core.fobj]):
 
@@ -355,7 +441,6 @@ def clear_empty(notes):
                 i=-1
             else:
                 curr_objs=True
-           
         i+=1
         if i>=len(curr_note):
             if len(stack)==0:

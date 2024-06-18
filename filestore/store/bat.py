@@ -1,6 +1,6 @@
 import filestore.core as core
 import os,zlib,sys
-from filestore.filesystem import checkexists,transfer,getpre
+from filestore.filesystem import checkexists,transfer,getpre,parse_object,save_object
 import  core.config as Cfg
 import argparse
 
@@ -158,7 +158,7 @@ class File(core.fobj):
         if kargs.get('name')==None:
             raise core.StoreError("Build a File object need path,name attr",core.StoreError.init)
         super().__init__(name=kargs['name'])
-        if len(kargs)==2:
+        if len(kargs)==1:
             return
         for i in self.Id_Attr:
             if kargs.get(self.Id_Attr[i])!=None:
@@ -248,89 +248,9 @@ if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %currpwd%)
         os.remove(realpath)
         return
 
-    """
-        解析备份文件,获取File对象
-    """
-
-    def parse_attr_branch(self,branch):
-        value=0
-        bit=0
-        for i in branch:
-            value|=ord(i)<<bit
-            bit+=8
-        return value
-
-    def parse_attr_t(self,attrid,attrdata):
-        attrtype=self.Attr_types[attrid]
-        if attrtype==core.attrType.str:
-            self.attr[attrid]=attrdata
-        elif attrtype==core.attrType.branch:
-            self.attr[attrid]=self.parse_attr_branch(attrdata)
-        elif attrtype==core.attrType.list:
-            if attrdata=='':
-                value=[]
-            else:
-                value=attrdata.split('\n')
-            self.attr[attrid]=value
-        
-    def Parseattr(self,file:core.fileio):
-        attrnum=file.ReadByte()
-        i=0
-        while i<attrnum:
-            attrsize=file.ReadWord()
-            zattrdata=file.Read(attrsize)
-            attrdata=zlib.decompress(zattrdata).decode("utf-8")
-            attrid=file.ReadByte()
-            self.parse_attr_t(attrid,attrdata)
-            i+=1
-
-    def Parse(self,file:core.fileio):
-        name_l=file.ReadByte()
-        name=file.Read(name_l).decode("utf-8")
-        super().__init__(name=name)
-        self.Parseattr(file)
-
-    """
-        Save
-        保存命令列表文件
-    """
-
-    def save_attr_branch(self,attrdata):
-        value=""
-        while attrdata!=0:
-            value=chr(attrdata&0xff)+value
-            attrdata=attrdata>>8
-        return value
-        
-    def save_attr_t(self,attrid,attrdata)->str:
-        if self.Attr_types[attrid]==core.attrType.str:
-            return attrdata
-        elif self.Attr_types[attrid]==core.attrType.branch:
-            return self.save_attr_branch(attrdata)
-        elif self.Attr_types[attrid]==core.attrType.list:
-            return '\n'.join(attrdata)
-        return ''
-
-    def Saveattr(self,file:core.fileio):
-        attrnum=len(self.attr)
-        file.WriteByte(attrnum)
-        for i in self.attr:
-            attrvalue:str=self.save_attr_t(i,self.attr[i])
-            zattrdata=zlib.compress(attrvalue.encode("utf-8"))
-            file.WriteWord(len(zattrdata))
-            file.Write(zattrdata)
-            file.WriteByte(i)
-
-    def Save(self,file:core.fileio):
-        file.WriteByte(self.tid)
-        wname=self.name.encode("utf-8")
-        file.WriteByte(len(wname))
-        file.Write(wname)
-        self.Saveattr(file)
-    
     def export_attr(self,attrid,attrdata):
         if self.Attr_types[attrid]==core.attrType.str:
-            attr_cache=attrdata.replace('"','^"')
+            attr_cache=attrdata.replace('"','""')
             attrvalue=f'"{attr_cache}"'
         elif self.Attr_types[attrid]==core.attrType.list:
             if attrdata==[]:
@@ -338,9 +258,9 @@ if not "%{self.Id_Attr[self.Attr.runpid]}%"=="" (cd /d %currpwd%)
             else:
                 attrvalue=""
                 for i in attrdata:
-                    attr_cache=i.replace('"','^"')
+                    attr_cache=i.replace('"','""')
                     attrvalue+=f'"{attr_cache}" '
-        elif self.Attr_types[attrid]==core.attrType.banch:
+        elif self.Attr_types[attrid]==core.attrType.branch:
             attrvalue=attrdata
         return f" {self.Attr_Arg[attrid]} {attrvalue}"
 

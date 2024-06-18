@@ -291,11 +291,11 @@ def getAttrFromPath(path,name):
         return None
     
     needAttr=[]
+    
     objType=filesystem.core.Storetypes[obj.tid]
     if hasattr(objType,"Needattr") and hasattr(objType,"Id_Attr") :
         for attrid in objType.Needattr:
             needAttr.append(objType.Id_Attr[attrid])
-
     attrs=obj.getAttr()
     result={}
     for attr in attrs:
@@ -306,7 +306,6 @@ def getAttrFromPath(path,name):
             attrtype=bool
         isneed=(attr in needAttr)
         result[attr]=(attrtype,attrs[attr][1],isneed)
-    
     return obj.suffix,result
 
 def typeExists(childType):
@@ -381,6 +380,7 @@ def MakeRoot():
     this=filesystem.fileroot
     this_info=root
     this_node_index=0
+
     while True:
         i=0
         

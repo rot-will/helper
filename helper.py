@@ -29,20 +29,27 @@ def print_help(args,arg:argparse.ArgumentParser):
         objtype=filestore.filesystem.core.filetypes[args.type]
         objtype.make_opt(arg)
         args=arg.parse_args()
-    else:
+    elif args.display=='con':
         display.make_opt(arg)
     arg.print_help()
-    pass
 
 def main():
     init.init()
     arg=argparse.ArgumentParser(allow_abbrev=True,add_help=False)
-
     make_opt(arg)
     args=arg.parse_known_args()[0]
+
+    init.init2(args.display)
+
     if args.help==True:
         print_help(args,arg)
-    elif args.clear==True:
+        return
+    
+    if args.clear==True or args.remake==True or args.export!=False or bool(args.name)==True or args.delete!=None :
+        filestore.filesystem.init_filestore(True)
+
+    
+    if args.clear==True:
         filestore.filesystem.clear_error()
     elif args.remake==True:
         filestore.filesystem.remake()
@@ -50,7 +57,7 @@ def main():
         filestore.filesystem.export(args.export[0],args.export[1])
     elif bool(args.name):
         if bool(args.type)==False:
-            type=config.cfg.deftype
+            type=config.cfg.config.deftype
         else:
             type=args.type
         objtype=filestore.filesystem.core.filetypes[type]
@@ -58,13 +65,16 @@ def main():
         args=arg.parse_args()
         args.type=type
         filestore.filesystem.make_filesystem(args,objtype)
-    elif args.path!=None:
-        filestore.filesystem.moveto(args.path)
     elif args.delete!=None:
         filestore.filesystem.remove(args.delete)
     else:
         display.make_opt(arg)
         args=arg.parse_args()
+        if args.display=="con":
+            if args.out_obj or args.out_all:
+                filestore.filesystem.init_filestore(True)
+            else:
+                filestore.filesystem.init_filestore(False)
         display.show(args)
     pass
 

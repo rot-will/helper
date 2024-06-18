@@ -71,6 +71,20 @@ class fileio:
             return self.body.write(data.to_bytes(4,'little'))
         raise FileExec("Need to open in byte write mode",FileExec.Mode)
     
+    def WriteNumber(self,data:int):
+        if self.mode&3!=3:
+            raise FileExec("Need to open in byte write mode",FileExec.Mode)
+        
+        wdata=[]
+        while data!=0:
+            if data>=0x80:
+                wdata.append((data&0x7f)|0x80)
+            else:
+                wdata.append(data)
+            data=data>>7
+        return self.body.write(bytes(wdata))
+
+
     @staticmethod
     def CheckNull(data):
         if len(data)==0:
@@ -97,7 +111,6 @@ class fileio:
                 raise FileExec("Insufficient remaining file length",FileExec.Format)
             return struct.unpack("<h",cache)[0]
         raise FileExec("Need to open in byte read mode",FileExec.Mode)
-    
     def ReadInt(self):
         if self.mode&6==6:
             cache:bytes=self.body.read(4)
@@ -107,7 +120,30 @@ class fileio:
                 raise FileExec("Insufficient remaining file length",FileExec.Format)
             return struct.unpack("<i",cache)[0]
         raise FileExec("Need to open in byte read mode",FileExec.Mode)
+    
+    def ReadNumber(self):
+        if self.mode&6!=6:
+            raise FileExec("Need to open in byte read mode",FileExec.Mode)
+        value=0
+        readnum=0
+        while True:
+            cache=self.body.read(1)
+            if len(cache)==0:
+                self.body.seek(-readnum,1)
+                raise FileExec("Insufficient remaining file length",FileExec.Format)
+            readnum+=1
+            number=cache[0]
+            value+=number&0x7f
+            if number&0x80!=0:
+                value=value<<7
+            else:
+                break
 
+        return value
+        
+    
+
+    
     def ReadUntil(self,data,drop=False):
         if self.mode&2==0:
             raise FileExec("Need to open in byte read mode",FileExec.Mode)
@@ -129,6 +165,7 @@ class fileio:
         if drop==True:
             res=res[:-len(data)]
         return res
+
     def flush(self):
         self.body.flush()
         
@@ -149,6 +186,47 @@ class attrType:
     str=0
     branch=1
     list=2
+    @staticmethod
+    def parse_branch(branch):
+        value=0
+        bit=0
+        for i in branch:
+            value|=ord(i)<<bit
+            bit+=8
+        return value
+
+    @staticmethod
+    def parse(attr_type,attr_data):
+        if attr_type==attrType.str:
+            result=attr_data
+        elif attr_type==attrType.branch:
+            result=attrType.parse_branch(attr_data)
+        elif attr_type==attrType.list:
+            if attr_data=='':
+                value=[]
+            else:
+                value=attr_data.split('\n')
+            result=value
+        return result
+
+    @staticmethod
+    def save_branch(branch):
+        value=""
+        while branch!=0:
+            value=chr(branch&0xff)+value
+            branch=branch>>8
+        return value
+    
+    @staticmethod
+    def save(attr_type,attr_data):
+        result=""
+        if attr_type==attrType.str:
+            result=attr_data
+        elif attr_type==attrType.branch:
+            result=attrType.save_branch(attr_data)
+        elif attr_type==attrType.list:
+            result='\n'.join(attr_data)
+        return result
 
 class fobj(object):
     suffix=None
@@ -172,8 +250,10 @@ class fobj(object):
     def remove(self,key=None):
         pass
 
+
     def Parse(self,file:fileio):
         pass
+    
 
     def Save(self,file:fileio):
         pass

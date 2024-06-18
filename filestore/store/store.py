@@ -1,5 +1,5 @@
 import filestore.core as core
-from filestore.filesystem import checkexists,transfer,getpre
+from filestore.filesystem import checkexists,transfer,getpre,save_name,parse_name
 import argparse
 
 
@@ -65,39 +65,6 @@ class Dire(core.fobj):
         else:
             raise core.StoreError("The type of key needs to be str",core.StoreError.args)
     
-    def ParseAttr(self,file:core.fileio):
-        attrlen=file.ReadWord()
-        i=0
-        while i<attrlen:
-            atype=file.ReadByte()
-            if core.Storetypes.get(atype)==None:
-                raise core.StoreError("Parse error",core.StoreError.init)
-            aobj:core.fobj=core.Storetypes[atype](file)
-            self.attr[aobj.name]=aobj
-            i+=1
-
-    def Parse(self,file:core.fileio):
-        nlen=file.ReadByte()
-        name=file.Read(nlen).decode("utf-8")
-        super().__init__(None,name=name)
-        self.ParseAttr(file)
-        pass
-
-    def SaveAttr(self,file:core.fileio):
-        attrlen=len(self.attr)
-        file.WriteWord(attrlen)
-        for v in self.attr.values():
-            v.Save(file)
-        pass
-    
-    def Save(self,file:core.fileio):
-        file.WriteByte(self.tid)
-        wname=self.name.encode("utf-8")
-        file.WriteByte(len(wname))
-        file.Write(wname)
-        self.SaveAttr(file)
-        pass
-    
     def export(self,file:core.fileio,path:str):
         if self.name!='/':
             file.Write(f"helper -n {self.name} -p {path} -t {self.suffix}\n")
@@ -153,7 +120,7 @@ class Dire(core.fobj):
     
     @staticmethod
     def iter(objset):
-        for i in objset.attr:
-            yield i
+        for objname in objset.attr:
+            yield objname
 
 FILETYPES=[Dire]

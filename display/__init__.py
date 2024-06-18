@@ -1,8 +1,10 @@
 import display.console
 import display.win
-def init():
-    display.console.init()
-    display.win.init()
+def init(display_pattern):
+    if display_pattern=="con":
+        display.console.init()
+    elif display_pattern=="win":
+        display.win.init()
     pass
 
 def show(args):
