@@ -4,7 +4,7 @@ from PySide6.QtGui import QIcon,QPixmap,QAction
 from PySide6.QtCore import Qt
 import display.win.api as api
 from display.win import Top,Body
-
+import os
 class msg(QDialog):
     def __init__(self,text):
         super().__init__()
@@ -91,7 +91,7 @@ class MainWindow(QWidget): # 创建窗口类，继承基础窗口类
         self.setupUi(app)
 
     def setupUi(self,app):
-        api.application_ico=QIcon("./icon.ico")
+        api.application_ico=QIcon(os.path.dirname(__file__)+"/icon.ico")
         self.setWindowIcon(api.application_ico)
         self.setWindowTitle("helper")
         self.setMaximumWidth(450)
@@ -146,7 +146,7 @@ class MainWindow(QWidget): # 创建窗口类，继承基础窗口类
         self.setStyleSheet("mwindow{background: #fff0f0;}")
     
     def setupTray(self,app):
-        tray=QSystemTrayIcon(QIcon("icon.ico"),parent=app)
+        tray=QSystemTrayIcon(api.application_ico,parent=app)
         menu=QMenu()
 
         restore=QAction("exit",menu)
@@ -157,7 +157,6 @@ class MainWindow(QWidget): # 创建窗口类，继承基础窗口类
         tray.activated.connect(self.display)
         tray.show()
         return tray
-        pass
     
     def closeEvent(self, event) -> None:
         self.hide()
@@ -170,7 +169,6 @@ class MainWindow(QWidget): # 创建窗口类，继承基础窗口类
                 self.show()
             else:
                 self.activateWindow()
-        pass
     
     def Toroot(self,event):
         if event.button()==Qt.MouseButton.LeftButton:
