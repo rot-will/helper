@@ -431,7 +431,7 @@ class Top(QWidget):
         self.setupStyle()
 
         self.toplay=TopButton("#37f6b0")
-        opt_butt=self.toplay.addButton("./option.png")
+        opt_butt=self.toplay.addButton(api.windows_dire+"/option.png")
         opt_butt.mouseReleaseEvent=self.option_show
         
         search=Search()

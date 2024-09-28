@@ -469,8 +469,6 @@ class attrName(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
         self.setLayout(layout)
 
-        pass
-
 class attrBox(QWidget):
     def __init__(self):
         super().__init__()

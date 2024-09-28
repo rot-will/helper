@@ -91,7 +91,8 @@ class MainWindow(QWidget): # 创建窗口类，继承基础窗口类
         self.setupUi(app)
 
     def setupUi(self,app):
-        api.application_ico=QIcon(os.path.dirname(__file__)+"/icon.ico")
+        api.windows_dire=os.path.dirname(__file__);
+        api.application_ico=QIcon(api.windows_dire+"/icon.ico")
         self.setWindowIcon(api.application_ico)
         self.setWindowTitle("helper")
         self.setMaximumWidth(450)

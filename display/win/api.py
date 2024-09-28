@@ -69,6 +69,7 @@ class ViewMode:
     method={List:listMode,Tree:treeMode}
 
 application_ico=None
+windows_dire=None
 root=Child_Info("/","/",-1,[],{})
 filterRule=""
 curr_path=["",""]
