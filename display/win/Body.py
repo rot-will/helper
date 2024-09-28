@@ -1101,7 +1101,8 @@ class ChildGroup(QLabel):
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
         if event.button()==Qt.MouseButton.LeftButton:
             api.Restore(self.property("path"),self.property("name"))
-        return super().mouseDoubleClickEvent(event)
+        # return super().mouseDoubleClickEvent(event)
+        return None;
     
     def mousePressEvent(self, ev: QMouseEvent) -> None:
         if ev.button()==Qt.MouseButton.LeftButton:
@@ -1203,7 +1204,7 @@ class Objbox(QWidget):
         
         layout=QVBoxLayout()
         layout.setSpacing(5)
-        layout.setContentsMargins(5,5,5,5)
+        layout.setContentsMargins(4,5,5,5)
         self.setLayout(layout)
         self.initBox()
         self.setBox()
@@ -1429,85 +1430,86 @@ class ObjGroup(QWidget):
         api.rename(path,name,f"{tp}/{tn}",name)
         return super().dropEvent(event)
 
-    def expend(self,beforeExp=False):
+    def expend(self,beforeExp=True):
         
         isexpend=self.property("isexpend")
-        if self.property("animation")!=None:
-            self.property("animation").stop()
-            self.property("animation").setParent(None)
-            self.setProperty("animation",None)
+        # if self.property("animation")!=None:
+        #     self.property("animation").stop()
+        #     self.property("animation").setParent(None)
+        #     self.setProperty("animation",None)
 
         if isexpend==False:
             self.box_s.show()
             start=self.name.height()
             end=start+self.box.property("maxheight")+2
-            box_start=self.box_s.height()
+            # box_start=self.box_s.height()
             box_end=self.box.property("maxheight")
             self.box_s.setFixedHeight(box_end)
-            self.setProperty("isexpend",True)
-            box_dur=300
-            me_dur=250
-            api.changeExpBox(self.property("name"),True)
+            # box_dur=300
+            # me_dur=250
 
 
         elif isexpend==True:
-            start=self.height()
+            # start=self.height()
             end=self.name.height()+2
-            box_start=self.box.height()
+            # box_start=self.box.height()
             box_end=0
-            self.setProperty("isexpend",False)
+            self.box_s.hide();
             
-            box_dur=250
-            me_dur=300
-            api.changeExpBox(self.property("name"),False)
+            # box_dur=250
+            # me_dur=300
+        
+        self.setProperty("isexpend",not isexpend)
+        api.changeExpBox(self.property("name"),not isexpend)
+        self.setFixedHeight(end)
+        self.box_s.setFixedHeight(box_end)
+        # if beforeExp:
+        #     self.setFixedHeight(end)
+        #     self.box_s.setFixedHeight(box_end)
+        #     return
+        
+        # anigroup=QParallelAnimationGroup(self)
+        # minani=QParallelAnimationGroup()
+        # maxani=QParallelAnimationGroup()
+        # min=QPropertyAnimation(self,b"minimumHeight")
+        # min.setDuration(me_dur)
+        # min.setStartValue(start)
+        # min.setEndValue(end)
+        
+        # boxmin=QPropertyAnimation(self.box_s,b"minimumHeight")
+        # boxmin.setDuration(box_dur)
+        # boxmin.setStartValue(box_start)
+        # boxmin.setEndValue(box_end)
 
-        if beforeExp:
-            self.setFixedHeight(end)
-            self.box_s.setFixedHeight(box_end)
-            return
-        
-        anigroup=QParallelAnimationGroup(self)
-        minani=QParallelAnimationGroup()
-        maxani=QParallelAnimationGroup()
-        min=QPropertyAnimation(self,b"minimumHeight")
-        min.setDuration(me_dur)
-        min.setStartValue(start)
-        min.setEndValue(end)
-        
-        boxmin=QPropertyAnimation(self.box_s,b"minimumHeight")
-        boxmin.setDuration(box_dur)
-        boxmin.setStartValue(box_start)
-        boxmin.setEndValue(box_end)
+        # max=QPropertyAnimation(self,b"maximumHeight")
+        # max.setDuration(me_dur)
+        # max.setStartValue(start)
+        # max.setEndValue(end)
 
-        max=QPropertyAnimation(self,b"maximumHeight")
-        max.setDuration(me_dur)
-        max.setStartValue(start)
-        max.setEndValue(end)
+        # boxmax=QPropertyAnimation(self.box_s,b"maximumHeight")
+        # boxmax.setDuration(box_dur)
+        # boxmax.setStartValue(box_start)
+        # boxmax.setEndValue(box_end)
+        
+        # minani.addAnimation(min)
+        # minani.addAnimation(boxmin)
+        
+        # maxani.addAnimation(max)
+        # maxani.addAnimation(boxmax)
 
-        boxmax=QPropertyAnimation(self.box_s,b"maximumHeight")
-        boxmax.setDuration(box_dur)
-        boxmax.setStartValue(box_start)
-        boxmax.setEndValue(box_end)
+        # anigroup.addAnimation(minani)
+        # anigroup.addAnimation(maxani)
         
-        minani.addAnimation(min)
-        minani.addAnimation(boxmin)
-        
-        maxani.addAnimation(max)
-        maxani.addAnimation(boxmax)
+        # def finished():
+        #     self.setProperty("animation",None)
+        #     if isexpend==True:
+        #         self.box_s.hide()
+        #         #self.box_s.setFixedHeight(0)
 
-        anigroup.addAnimation(minani)
-        anigroup.addAnimation(maxani)
+        # anigroup.finished.connect(finished)
+        # anigroup.start()
         
-        def finished():
-            self.setProperty("animation",None)
-            if isexpend==True:
-                self.box_s.hide()
-                #self.box_s.setFixedHeight(0)
-
-        anigroup.finished.connect(finished)
-        anigroup.start()
-        
-        self.setProperty("animation",anigroup)
+        # self.setProperty("animation",anigroup)
 
     def resizeEvent(self,event):
         if self.property("isexpend")==True and self.property("animation")==None:
@@ -1515,7 +1517,11 @@ class ObjGroup(QWidget):
             self.box_s.setFixedHeight(self.box.property("maxheight"))
             self.setFixedHeight(height)
         return super().resizeEvent(event)
-    
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button()==Qt.MouseButton.MiddleButton:
+            api.Restore(self.property("path"),self.property("name"))
+        # return super().mouseDoubleClickEvent(event)
+        return None;
 class Body(QWidget):
     def __init__(self,*args,**kargs):
         super().__init__(*args,**kargs)
