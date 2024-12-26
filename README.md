@@ -1,5 +1,4 @@
-经过迭代之后，现在的helper工具不仅仅能用来管理windows中的命令，根据自定义插件可以用于任何系统，也可以用来管理文档等各种功能
-不过这只是我认为的，有任何意见与问题请您将其提出来
+工具可以用来管理windows中的命令，根据自定义插件可以用于任何系统
 
 ## 迁移数据
 ### 3.x -> 4.0
@@ -10,6 +9,7 @@
 
 ## 参数详情
 ```shell
+# 默认参数，可以使用 -t ??? 或 -dis ??? 指定输出或节点模块，同时使用-h可以获取对应模块的参数
 usage: helper.py [-h] [-n NAME] [-t TYPE] [-p PATH] [-d DELETE] [-clear] [-dis DISPLAY] [-row ROWNUM] [-s SEARCH]
                   [-sd SEARCH_NOTE] [-out] [-all]
 
@@ -43,14 +43,14 @@ python3 helper.py -dis con -h #查看命令行显示参数
 ```shell
 python3 helper.py -dis win
 python3 helper.py -dis win -h #查看窗口显示参数
-
+pythonw helper.py -dis win # 显示无命令行窗口
 ```
 
 ## 节点与对象
-由于本人英语不好，所以代码中存在部分node与note乱用的情况
+由于本人英语不好，所以代码中存在部分node与note乱用的情况，实在抱歉
 查看指定类型对象的创建参数
 ```shell
-python3 helper.py -t ... -h 
+python3 helper.py -t ??? -h 
 ```
 
 默认仅支持增加与删除，其他操作以插件为准，目前插件系统还为开发完全
@@ -65,61 +65,39 @@ python3 helper.py -t node -d /a/b/c/name
 编写的插件放入 `filestore/store/`
 插件模板
 ```python
+import filestore.core as core
 class File(core.fobj):
-    suffix="bat" # 插件名称，也用于文件后缀
-    tid=1 # 插件id，需要手动设置，不能与其他插件冲突
+    suffix="test" # 节点类型的名称，当创建节点会创建文件时，也是文件的后缀名 
+    is_physical=True # 用于判断节点是否会创建文件
+    tid=1 # 节点类型的唯一id 定义时请慎重
+    is_join_suff=True # 判断节点创建的文件是否带有后缀
 
-    class Attr:
-        ... # 设置属性id
+    class Attr(core.Enum):
+        test=0
+        # 储存属性id的枚举类型
 
-    Id_Attr={attrid:"attrname"} #设置属性id与属性名称的映射
+    Attr_info={Attr.test.value:core.attrInfo(name="test",type=core.test.str,arg="-test",desc="test"),}
+        # 属性信息
+
+    Needattr=[Attr.test.value] # 必须存在的属性id列表
     
-    Needattr=[attrid,..] # 设置必要的属性
-    
-    Attr_types={attrid:attrtype} #设置属性id对应的属性类型
 
-    Out_need_attr={attrid} # 设置简单输出时输出的属性
+    Out_need_attr={Attr.descid.value} # 简单输出时的属性列表
 
-    @staticmethod
-    def make_opt(arg:argparse.ArgumentParser):
-        ... # 设置自定义插件的命令行参数
-
-    @staticmethod
-    def handle(args):
-      ... # 根据args中的值进行增改操作，然后使用__init__函数应用属性的更改
-            
-    def __init__(self,*args,**kargs):
-        # 一般通过handle调用，
-
-    
+    def Make(self):
+        # 创建对象时的操作
+        # 根据 self.attr 中的属性运行处理代码
+    """
+        用于删除对象
+    """
     def remove(self,key=None):
-        # 当前节点被删除时进行的操作
+        # 删除对象时的操作
         return
 
-    def Parse(self,file:core.fileio):
-        # 解析存档文件中当前类型的对象
-
-    def Save(self,file:core.fileio):
-        file.WriteByte(self.tid)
-        # 讲当前对象保存到存档文件中
-
-    def export(self,file:core.fileio,path:str):
-        # 导出当前对象的生成参数
-    
-    def getAttr(self):
-        result={}
-        for i in self.attr:
-            result[self.Id_Attr[i]]=(self.Attr_types[i],self.attr[i])
-        return result
-    
-    def __str__(self):
-        return str(self.name)
-
-    def __repr__(self):
-        return str(self)
-FILETYPES=[...] # 指定导出的对象类
+FILETYPES=[File]
 import  core.config as Cfg
 def CheckCONFIG():
+    pass
     #检查需要的参数是否设置完全
     #全局配置储存在 Cfg.cfg中
     

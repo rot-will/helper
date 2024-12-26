@@ -503,11 +503,19 @@ class attrBox(QWidget):
         else:
             wid=QWidget()
             wid.setFixedHeight(50)
+        nameLabel.setVisible(False);
+        wid.setVisible(False)
         height=wid.height()
         nameLabel.setFixedHeight(height)
         return (nameLabel,wid),height
 
     def changeView(self,name,attr):
+        if (self.property("name")!=None):
+            for name_,attr_ in self.typeLayout.get(self.property("name"))[0]:
+                self.nameLay.removeWidget(name_)
+                self.attrLay.removeWidget(attr_)
+                name_.setVisible(False)
+                attr_.setVisible(False)
         self.setProperty("name",name)
         if self.typeLayout.get(name)!=None:
             self.setupLay(name)
@@ -528,13 +536,16 @@ class attrBox(QWidget):
             attrs,maxheight=self.typeLayout[attrInfos]
         else:
             attrs,maxheight=attrInfos
-        while self.nameLay.count():
-            self.nameLay.removeItem(self.nameLay.itemAt(0))
-        while self.attrLay.count():
-            self.attrLay.removeItem(self.attrLay.itemAt(0))
+        
+        # while self.nameLay.count():
+        #     self.nameLay.removeItem(self.nameLay.itemAt(0))
+        # while self.attrLay.count():
+        #     self.attrLay.removeItem(self.attrLay.itemAt(0))
         for name,attr in attrs:
             self.nameLay.addWidget(name)
             self.attrLay.addWidget(attr)
+            name.setVisible(True)
+            attr.setVisible(True)
         self.setFixedHeight(maxheight)
 
     def checkValue(self):
@@ -735,6 +746,8 @@ class ChildWidget(QDialog):
         if typeattr==None:
             self.typeSel.removeItem(ind)
             self.typeSel.setCurrentIndex(0)
+            self.changeView()
+            return;
         else:
             self.childattr.changeView(name,typeattr)
 

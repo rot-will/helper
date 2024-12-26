@@ -9,6 +9,8 @@ version=1.0
     {d1:[{d2:[{d3:fdata}]},fdata]}
 """
 import struct
+import enum
+# from filestore.filesystem import checkexists,transfer,getpre # ,parse_object,save_object
 
 class FileExec(Exception):
     EOF=-1
@@ -228,41 +230,195 @@ class attrType:
             result='\n'.join(attr_data)
         return result
 
+class attrInfo:
+    def __init__(self,name,type,arg,desc):
+        self.name=name
+        self.type=type
+        self.arg=arg
+        self.desc=desc
+
+class Enum(enum.Enum):
+    pass
+
 class fobj(object):
     suffix=None
+    is_physical=False
+    is_join_suff=False
+    tid=None
     
-    @staticmethod
-    def make_opt(arg):
+    class Attr(Enum):
+        none=0
+
+    Needattr={Attr.none}
+
+    Attr_info={
+        Attr.none.value:attrInfo("none",attrType.str,"-none","None")
+    }
+
+    Out_need_attr={}
+    
+
+    def checkNeedful(self):
+        for i in self.Needattr:
+            if self.Attr_info[i].type!=attrType.branch and bool(self.attr.get(i))==False:
+                errmessage="Some necessary attr were not initialized:"
+                for i in self.Needattr:
+                    errmessage+=self.Attr_info[i].name+','
+                errmessage=errmessage.rstrip(',')
+                raise StoreError(errmessage,StoreError.init)
+
+    @staticmethod 
+    def checkname(name):
+        legal_char='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-'
+        for i in name:
+            if i not in legal_char:
+                return False
+        return True
+    
+    @classmethod
+    def handle(cls,args):
+        from filestore.filesystem import checkexists,transfer,getpre
+        if cls.checkname(args.name)==False:
+            raise StoreError("%s is illegal"%args.name,StoreError.args)
+        if args.path==None:
+            path='/'
+        else:
+            path=args.path
+        obj,oripath=checkexists(args.name,path)
+        resarg={}
+        objtype=filetypes[args.type]
+        for id in objtype.Attr_info:
+            resval=getattr(args,objtype.Attr_info[id].name)
+            if objtype.Attr_info[id].type==attrType.str:
+                if resval==None:
+                    resval=""
+                else:
+                    resval=resval.replace('"','^"')
+                
+            elif objtype.Attr_info[id].type==attrType.list:
+                nresval=[]
+                if resval==None or len(resval)==0:
+                    nresval=['']
+                else:
+                    for o in resval:
+                        value=o#.replace('"','""')
+                        if value!='':
+                            nresval.append(value)
+                
+                resval=nresval
+            elif objtype.Attr_info[id].type==attrType.branch:
+                if resval==None:
+                    resval=1
+                resval=int(resval)
+            resarg[objtype.Attr_info[id].name]=resval
+
+        if obj==None:
+            pre,curname=getpre(path+'/'+args.name)
+            obj=objtype(name=curname,**resarg)
+            pre[curname]=obj
+        elif obj.suffix != args.type:
+            raise StoreError("%s already exists,and that its type is %s ,not %s"%(args.name,obj.suffix,args.type))
+        else:
+            if args.path!=None and oripath != path :
+                # print("123")
+                tarname,obj=transfer(oripath+'/'+args.name,path)
+            else:
+                for i in obj.Attr_info:
+                    if obj.Attr_info[i].type==attrType.branch or getattr(args,obj.Attr_info[i].name)!=None:
+                        obj.attr[i]=resarg.get(obj.Attr_info[i].name)
+                
+            obj.Make()
+
+    @classmethod
+    def make_sub_opt(cls,grp,attrid,**kargs):
+        if cls.Attr_info[attrid].type==attrType.str:
+            kargs['default']=None
+        elif cls.Attr_info[attrid].type==attrType.branch:
+            kargs['nargs']='?'
+            kargs['default']=0
+        elif cls.Attr_info[attrid].type==attrType.list:
+            kargs['nargs']='+'
+            kargs['default']=None
+        grp.add_argument(cls.Attr_info[attrid].arg,\
+                         dest=cls.Attr_info[attrid].name,\
+                         help=cls.Attr_info[attrid].desc,\
+                         **kargs)
         pass
+
+    @classmethod
+    def make_opt(cls,arg):
+        grp=arg.add_argument_group("%s obj"%cls.suffix)
+        for id in cls.Attr_info:
+            cls.make_sub_opt(grp, id,)
     
     @staticmethod
     def handle(args):
         pass
-
     
-    def __init__(self,*arg,**kargs):
-        self.name:str=kargs.get('name')
-        pass
+    def __init__(self,*args,**kargs):
+        self.attr={}
+        if kargs.get('name')==None:
+            raise StoreError("Build a File object need path,name attr",StoreError.init)
+        self.name=kargs.get('name')
+        if len(kargs)==1:
+            return
+        for i in self.Attr_info:
+            if kargs.get(self.Attr_info[i].name)!=None:
+                self.attr[i]=kargs[self.Attr_info[i].name]
+        self.checkNeedful()
+        self.Make()
 
-    def moveto(self,topath):
-        pass
-
+    """
+        用于删除对象
+    """
     def remove(self,key=None):
-        pass
+        if bool(key):
+            raise StoreError("%s is File,not Dire"%self.name,StoreError.missing)
 
+    """
+        用于导出属性
+    """
+    def export_attr(self,attrid,attrdata):
+        if self.Attr_info[attrid].type==attrType.str:
+            attr_cache=attrdata.replace('"','""')
+            attrvalue=f'"{attr_cache}"'
+        elif self.Attr_info[attrid].type==attrType.list:
+            if attrdata==[]:
+                return " "
+            else:
+                attrvalue=""
+                for i in attrdata:
+                    attr_cache=i.replace('"','""')
+                    attrvalue+=f'"{attr_cache}" '
+        elif self.Attr_info[attrid].type==attrType.branch:
+            attrvalue=attrdata
+        return f" {self.Attr_info[attrid].arg} {attrvalue}"
 
-    def Parse(self,file:fileio):
-        pass
-    
-
-    def Save(self,file:fileio):
-        pass
-
+    """
+        用于导出对象
+    """
     def export(self,file:fileio,path:str):
+        title=f"helper -n {self.name} -p {path} -t {self.suffix}"
+        for i in self.attr:
+            title+=self.export_attr(i,self.attr[i])
+
+        file.Write(title+'\n')
         pass
     
+    """
+        获取属性信息
+    """
     def getAttr(self):
-        return None
+        result={}
+        for i in self.attr:
+            result[self.Attr_info[i].name]=(self.Attr_info[i].type,self.attr[i])
+        return result
+    
+    def __str__(self):
+        return str(self.name)
+
+    def __repr__(self):
+        return str(self)
 
 
 Storetypes:dict[int,type[fobj]]={}

@@ -1,18 +1,32 @@
 import os,sys
 import filestore.core as core
-#import filestore.store as store
-#import filestore.method as method
-#from filestore.core import StoreError
-#import core.config as config
+import core.config as Cfg
 import core.args as args
 from information.log import log
 import zlib
 
 log_title="filesystem"
 fileroot:core.fobj=None
+
+def init_filestore_config():
+    # print('123')
+    defcfg={'defpath':os.path.join(sys.path[0],'objs')}
+    Cfg.checkConfig('filestore',defcfg)
+    #print(Cfg.cfg)
+    defpath=Cfg.cfg.filestore.defpath
+    if os.path.exists(defpath):
+        if not os.path.isdir(defpath):
+            raise Cfg.CfgExce("defpath not direction",Cfg.CfgExce.argerror)
+    else:
+        os.mkdir(defpath)
+        pass
+
 def checkinit():
     if fileroot==None:
         raise core.StoreError("The filesystem is not initialized",core.StoreError.init)
+
+
+
 
 def map_types()->dict[str,core.fobj]:
     types={}
@@ -43,7 +57,7 @@ def parse_object(obj,file:core.fileio):
         zattrdata=file.Read(attrsize)
         attrdata=zlib.decompress(zattrdata).decode("utf-8")
         attrid=file.ReadByte()
-        obj.attr[attrid]=core.attrType.parse(obj.Attr_types[attrid],attrdata)
+        obj.attr[attrid]=core.attrType.parse(obj.Attr_info[attrid].type,attrdata)
         i+=1
     
 
@@ -114,7 +128,7 @@ def save_object(obj:core.fobj,file:core.fileio):
     attrnum=len(obj.attr)
     file.WriteNumber(attrnum)
     for attrid in obj.attr:
-        attrvalue:str=core.attrType.save(obj.Attr_types[attrid],obj.attr[attrid])
+        attrvalue:str=core.attrType.save(obj.Attr_info[attrid].type,obj.attr[attrid])
         zattrdata=zlib.compress(attrvalue.encode("utf-8"))
         file.WriteWord(len(zattrdata))
         file.Write(zattrdata)
@@ -149,10 +163,6 @@ def save():
     file=os.path.join(sys.path[0],'helper2.hfg')
     save_(file,fileroot)
     pass
-
-
-
-
 
 def backfilestore():
     hfg=os.path.join(sys.path[0],'helper2.hfg')
@@ -204,6 +214,7 @@ def init():
         fileroot=core.Storetypes[0](name='/')
         save()
     core.filetypes=map_types()
+    init_filestore_config()
 
 def init_filestore(status):
 
@@ -325,13 +336,14 @@ def transfer(oripath,target):
     oriobj=oripre[oriname]
     if oriobj==None:
         raise core.StoreError("error",1)
-    if tarobj!=None and tarobj!=oriobj:
-        oriroute=os.path.join(oriobj.path,oriname+'.'+oriobj.suffix)
-        tarroute=os.path.join(oriobj.path,tarname+'.'+oriobj.suffix)
-        if tarobj.tid!=0:
-            raise core.StoreError("%s is exists, and its path is %s"%(tarobj.name,tarpath+'/'+tarobj.name),core.StoreError.Exist)
-        elif tarobj.tid==0:
-            raise core.StoreError("%s is exists, it is a node"%(target),core.StoreError.Exist)
+    if  tarobj!=oriobj and oriobj.is_physical==True:
+        oriroute=os.path.join(Cfg.cfg.filestore.defpath,oriname+('.'+oriobj.suffix if oriobj.is_join_suff else ''))
+        tarroute=os.path.join(Cfg.cfg.filestore.defpath,tarname+('.'+oriobj.suffix if oriobj.is_join_suff else ''))
+        if (tarobj!=None):
+            if tarobj.tid!=0:
+                raise core.StoreError("%s is exists, it is %s"%(tarobj.name,tarpath+'/'+tarobj.name),core.StoreError.Exist)
+            elif tarobj.tid==0:
+                raise core.StoreError("%s is exists, it is a node"%(target),core.StoreError.Exist)
         if oriroute !=tarroute:
             try:
                 if os.path.exists(tarroute):
@@ -413,8 +425,8 @@ def remake():
     clear_error()
     def makeargs(obj):
         result=args.args()
-        for i in obj.Id_Attr:
-            result[obj.Id_Attr[i]]=obj.attr[i]
+        for i in obj.Attr_info:
+            result[obj.Attr_info[i]]=obj.attr[i]
             pass
         result.name=obj.name
         result.type=obj.suffix
@@ -482,9 +494,9 @@ def get_objs(notes):
 def get_attr(obj,need=None):
     attrs={}
     if need==None:
-        need=list(obj.Id_Attr.keys())
+        need=list(obj.Attr_info.keys())
     for i in need:
-        attrs[obj.Id_Attr[i]]=obj.attr[i]
+        attrs[obj.Attr_info[i].name]=obj.attr[i]
     return attrs
 
 def get_need_attr(obj):

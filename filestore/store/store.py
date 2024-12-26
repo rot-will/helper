@@ -6,6 +6,8 @@ import argparse
 class Dire(core.fobj):
     suffix="node"
     tid=0
+    Attr_info={
+    }
     @staticmethod
     def make_opt(arg:argparse.ArgumentParser):
         note=arg.add_argument_group("%s"%Dire.suffix)

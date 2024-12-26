@@ -251,19 +251,22 @@ def getTypeAttrFromName(name):
         if store_type.suffix==name:
             attr={}
             needAttr=[]
-            if hasattr(store_type,"Id_Attr")==None:
+            if hasattr(store_type,"Attr_info")==None:
                 return attr
+            attrinfo=store_type.Attr_info
             if hasattr(store_type,"Needattr"):
                 needAttr=store_type.Needattr.copy()
-            if hasattr(store_type,"Attr_types"):
-                for attrid in store_type.Id_Attr:
+
+            
+            for attrid in attrinfo:
+                if attrinfo[attrid].type==filesystem.core.attrType.str:
                     attrtype=str
-                    if store_type.Attr_types[attrid]==filesystem.core.attrType.list:
-                        attrtype=list
-                    elif store_type.Attr_types[attrid]==filesystem.core.attrType.branch:
-                        attrtype=bool
-                    isneed=(attrid in needAttr)
-                    attr[store_type.Id_Attr[attrid]]=(attrtype,None,isneed)
+                if attrinfo[attrid].type==filesystem.core.attrType.list:
+                    attrtype=list
+                elif attrinfo[attrid].type==filesystem.core.attrType.branch:
+                    attrtype=bool
+                isneed=(attrid in needAttr)
+                attr[attrinfo[attrid].name]=(attrtype,None,isneed)
             
             return attr
     return None
@@ -294,9 +297,9 @@ def getAttrFromPath(path,name):
     needAttr=[]
     
     objType=filesystem.core.Storetypes[obj.tid]
-    if hasattr(objType,"Needattr") and hasattr(objType,"Id_Attr") :
+    if hasattr(objType,"Needattr") and hasattr(objType,"Attr_info") :
         for attrid in objType.Needattr:
-            needAttr.append(objType.Id_Attr[attrid])
+            needAttr.append(objType.Attr_info[attrid].name)
     attrs=obj.getAttr()
     result={}
     for attr in attrs:
