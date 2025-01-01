@@ -4,7 +4,7 @@ import filestore.filesystem as filesystem
 import core.config as config
 import re
 
-Node_type=-1
+Node_type=[-100]
 class Child_Info(object):
     def __init__(self,name,path,type,childs=None,child_nodes=None):
         self.name=name
@@ -35,7 +35,7 @@ class ViewMode:
     Tree=2
     @staticmethod
     def listMode(TopNode):
-        result=Child_Info(TopNode.name,TopNode.path,Node_type,[],{})
+        result=Child_Info(TopNode.name,TopNode.path,TopNode.type,[],{})
         currNode=TopNode
         currInd=0
         currChild=[]
@@ -43,7 +43,7 @@ class ViewMode:
         while True:
             currChild=[]
             for child in currNode.childs:
-                if child.type==Node_type:
+                if child.type in Node_type:
                     currChild.append(child)
                 else:
                     result.childs.append(child)
@@ -97,13 +97,13 @@ def get_child(path,name):
 def sortchild(top,depth=0,mode=0):
     if top==None:
         top=root
-    result=Child_Info(top.name,top.path,Node_type,[],{})
+    result=Child_Info(top.name,top.path,top.type,[],{})
     if depth>1:
         return result,None,None
     objs=[]
     nodes=[]
     for child in top.childs:
-        if child.type==Node_type:
+        if child.type in Node_type:
             nodes.append(child)
         else:
             objs.append(Child_Info(child.name,child.path,child.type))
@@ -123,21 +123,18 @@ def sortchild(top,depth=0,mode=0):
 
         pass
     return result,len(objs),len(nodes)
-    pass
 
 def useRule(child,rule):
     if re.search(rule,child.name):
         return True
     return False
-    pass
 
 def filterChild(TopNode,filterRule):
     if TopNode==None:
-        return Child_Info("未找到","",Node_type,[],{})
-    
-    result=Child_Info(TopNode.name,TopNode.path,Node_type,[],{})
+        return Child_Info("未找到","",Node_type[0],[],{})
+    result=Child_Info(TopNode.name,TopNode.path,TopNode.type,[],{})
     for child in TopNode.childs:
-        if child.type==Node_type:
+        if child.type in Node_type:
             filter_child=filterChild(child,filterRule)
             if len(filter_child.childs)!=0 or bool(filterRule)==False:
                 result.childs.append(filter_child)
@@ -145,10 +142,8 @@ def filterChild(TopNode,filterRule):
         elif useRule(child,filterRule):
             result.childs.append(Child_Info(child.name,child.path,child.type))
             pass
-            
         pass
     return result
-    pass
 
 def splitPath(path):
     path=path.rstrip('/')
@@ -163,7 +158,6 @@ def splitPath(path):
     return path,name
 
 def viewMode(TopNode,mode):
-    #return TopNode
     return ViewMode.method[mode](TopNode)
     pass
 
@@ -378,7 +372,7 @@ def setConfigFromDict(cfgDict):
 
 def MakeRoot():
     global root
-    root=Child_Info("","",Node_type,[],{})
+    root=Child_Info("","",Node_type[0],[],{})
     i=0
     stack=[]
     this=filesystem.fileroot
@@ -390,7 +384,7 @@ def MakeRoot():
         
         subnotes=[]
         while i<len(this):
-            if this[i].tid==Node_type:
+            if this[i].tid in Node_type:
                 subnotes.append(this[i])
             else:
                 this_info.childs.append(Child_Info(this[i].name,f"{this_info.path}/{this_info.name}",this[i].tid))
@@ -422,7 +416,9 @@ def MakeRoot():
 def init():
     global curr_path
     global Node_type
-    Node_type=filesystem.core.Storetypes[0].tid
+    Node_type=[filesystem.core.Storetypes[i].tid for i in filesystem.core.Storetypes if filesystem.core.Storetypes[i].tid<0]
+    Node_type.remove(filesystem.default_node.tid)
+    Node_type.insert(0,filesystem.default_node.tid)
     curr_path=["",""]
     MakeRoot()
 

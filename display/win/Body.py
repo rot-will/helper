@@ -480,7 +480,6 @@ class attrBox(QWidget):
         layout=QHBoxLayout()
         layout.setSpacing(0)
         layout.setContentsMargins(10,5,10,5)
-        #layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         nameLay=QVBoxLayout()
         nameLay.setSpacing(0)
         attrLay=QVBoxLayout()
@@ -1265,7 +1264,7 @@ class Objbox(QWidget):
         obj_height=0
         node_height=0
         for i in self.property("childs"):
-            if i.type==api.Node_type:
+            if i.type in api.Node_type:
                 node=ChildGroup(i,self)
                 node_height=node.height()
                 nodes.append(node)
@@ -1632,7 +1631,8 @@ class Body(QWidget):
         objs=[]
         objwidth=0
         for child in childs:
-            if child.type==api.Node_type:
+            # print(child.type,api.Node_type)
+            if child.type in api.Node_type:
                 isExpend=(child.name in api.expendBox)
                 node=ObjGroup(child,self)
                 if isExpend:

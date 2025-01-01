@@ -78,6 +78,9 @@ class fileio:
             raise FileExec("Need to open in byte write mode",FileExec.Mode)
         
         wdata=[]
+        if (data==0):
+            wdata=[0]
+            pass
         while data!=0:
             if data>=0x80:
                 wdata.append((data&0x7f)|0x80)
@@ -240,7 +243,153 @@ class attrInfo:
 class Enum(enum.Enum):
     pass
 
-class fobj(object):
+class fCore(object):
+    suffix=None
+    tid=None
+    
+    @classmethod
+    def handle(cls,args):
+        pass
+
+    @classmethod
+    def make_opt(cls,arg):
+        pass
+
+    
+    def __init__(self,*args,**kargs):
+        self.name:str=kargs.get('name')
+        pass
+
+    """
+        用于删除对象
+    """
+    def remove(self,key=None):
+        pass
+
+    """
+        用于导出属性
+    """
+    def export_attr(self,attrid,attrdata):
+        pass
+
+    """
+        用于导出对象
+    """
+    def export(self,file:fileio,path:str):
+        pass
+    
+    """
+        获取属性信息
+    """
+    def getAttr(self):
+        pass
+    
+    def __str__(self):
+        pass
+
+    def __repr__(self):
+        pass
+
+class dobj(fCore):
+    suffix=None
+    tid=None
+    @classmethod
+    def make_opt(cls,arg):
+        # note=arg.add_argument_group("%s"%cls.suffix)
+        pass
+
+    @classmethod
+    def handle(cls, args):
+        return super().handle(args)
+        
+    def __init__(self,*args,**kargs):
+        self.attr:dict[str,fCore]={}
+        if kargs.get('name')==None:
+            StoreError("Build a File object need name attr",StoreError.init)
+        super().__init__(name=kargs['name'])
+
+    def remove(self,key=None):
+        if key==None:
+            keys=list(self.attr.keys())
+            for key in keys:
+                self.attr[key].remove()
+                self.attr.pop(key)
+        elif type(key)==str:
+            if self.attr.get(key)!=None:
+                self.attr[key].remove()
+                self.attr.pop(key)
+            else:
+                raise StoreError("%s is not exist"%key,StoreError.missing)
+        elif type(key)==list:
+            if self.attr.get(key[0])!=None:
+                if len(key)==1:
+                    self.remove(key[0])
+                elif len(key)==2:
+                    self.attr[key[0]].remove(key[1])
+                else:
+                    self.attr[key[0]].remove(key[1:])
+            else:
+                raise StoreError("%s is not exist"%key[0],StoreError.missing)
+        else:
+            raise StoreError("The type of key needs to be str",StoreError.args)
+        
+    def export(self,file:fileio,path:str):
+        if self.name!='/':
+            file.Write(f"helper -n {self.name} -p {path} -t {self.suffix}\n")
+            name=self.name
+        else:
+            path=""
+            name=""
+        if path=='/':
+            path=''
+        for obj in self.attr.values():
+            obj.export(file,path+'/'+name)
+
+        file.flush()
+
+    def __str__(self):
+        return str(self.attr)
+
+    def __repr__(self):
+        return str(self)
+    
+    def __setitem__(self,key,value):
+        if type(key)!=str:
+            raise ValueError("Value must be str")
+        if type(value)==str:
+            self.attr[key]=self.__class__(value)
+        else:
+            self.attr[key]=value
+
+    def __len__(self):
+        return len(self.attr)
+    
+    def __iter__(self):
+        return self.iter(self)
+    
+    @staticmethod
+    def iter(objset):
+        for objname in objset.attr:
+            yield objname
+    def pop(self,key):
+        return self.attr.pop(key)
+    
+    def get(self,key) -> fCore|None:
+        return self.attr.get(key)
+
+    def __getitem__(self,key) -> fCore|None:
+        if type(key)==int:
+            key=list(self.attr.keys())[key]
+        res=self.attr.get(key)
+        return res
+    
+    def checkExist(self,key) -> bool :
+        res=self.attr.get(key)
+        if res==None:
+            return False
+        return True
+
+class fobj(fCore):
     suffix=None
     is_physical=False
     is_join_suff=False
@@ -350,16 +499,12 @@ class fobj(object):
         grp=arg.add_argument_group("%s obj"%cls.suffix)
         for id in cls.Attr_info:
             cls.make_sub_opt(grp, id,)
-    
-    @staticmethod
-    def handle(args):
-        pass
-    
+
     def __init__(self,*args,**kargs):
         self.attr={}
         if kargs.get('name')==None:
             raise StoreError("Build a File object need path,name attr",StoreError.init)
-        self.name=kargs.get('name')
+        super().__init__(name=kargs['name'])
         if len(kargs)==1:
             return
         for i in self.Attr_info:
@@ -368,6 +513,12 @@ class fobj(object):
         self.checkNeedful()
         self.Make()
 
+    """
+        创建后的实际操作
+    """
+    def Make():
+
+        pass
     """
         用于删除对象
     """
@@ -419,6 +570,9 @@ class fobj(object):
 
     def __repr__(self):
         return str(self)
+
+    pass
+
 
 
 Storetypes:dict[int,type[fobj]]={}

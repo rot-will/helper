@@ -6,11 +6,11 @@ from information.log import log
 import zlib
 
 log_title="filesystem"
-fileroot:core.fobj=None
-
+fileroot:core.dobj=None
+default_node=None
 def init_filestore_config():
     # print('123')
-    defcfg={'defpath':os.path.join(sys.path[0],'objs')}
+    defcfg={'defpath':os.path.join(sys.path[0],'objs'),'defnode':"node"}
     Cfg.checkConfig('filestore',defcfg)
     #print(Cfg.cfg)
     defpath=Cfg.cfg.filestore.defpath
@@ -45,6 +45,8 @@ parse_status=0
 
 def parse_name(file:core.fileio):
     tid=file.ReadByte()
+    if (tid&0x80)!=0:
+        tid=tid
     name_l=file.ReadNumber()
     name=file.Read(name_l).decode("utf-8")
     return core.Storetypes[tid](name=name)
@@ -68,23 +70,20 @@ def parse_names(file:core.fileio,parent=None):
     i=0
     while i<objnum:
         obj=parse_name(file)
-        if obj.tid==0:
+        if obj.tid<0:
             parse_names(file,obj)
         parent[obj.name]=obj
         i+=1
     return parent
 def parse_attributes(node,file):
     for attrname in node:
-        if node[attrname].tid==0:
+        if node[attrname].tid<0:
             parse_attributes(node[attrname],file)
-        else:
+        elif node[attrname].tid>0:
             parse_object(node[attrname],file)
     pass
 
 def parse_(fio:core.fileio,status):
-    # tid=fio.ReadByte()
-    # return core.Storetypes[tid](fio)
-
     store=parse_names(fio)
     if status:
         parse_attributes(store,fio)
@@ -110,16 +109,16 @@ def parse(file:str,status=True):
                 root=parse_(fio,status)
             except core.StoreError:
                 log("Failed to parse %s and %s, A new data file will be created soon"%(file,bak),0,log_title)
-                root=core.Storetypes[0](name='/')
+                root=default_node(name='/')
         else:
             log("Failed to parse %s, nor does the backup file exist. A new data file will be created soon"%file,0,log_title)        
-            root=core.Storetypes[0](name='/')
+            root=default_node(name='/')
             
     fio.close()
     return root
 
 def save_name(obj,file:core.fileio):
-    file.WriteByte(obj.tid)
+    file.WriteByte(obj.tid&0xff)
     wname=obj.name.encode("utf-8")
     file.WriteNumber(len(wname))
     file.Write(wname)
@@ -138,16 +137,16 @@ def save_names(node,file:core.fileio):
     save_name(node,file)
     file.WriteNumber(len(node))
     for objname in node:
-        if node[objname].tid==0:
+        if node[objname].tid<0:
             save_names(node[objname],file)
-        else:
+        elif node[objname].tid>0:
             save_name(node[objname],file)
 
-def save_attribute(node,file:core.fileio):
+def save_subnode(node,file:core.fileio):
     for objname in node:
-        if node[objname].tid==0:
-            save_attribute(node[objname],file)
-        else:
+        if node[objname].tid<0:
+            save_subnode(node[objname],file)
+        elif node[objname].tid>0:
             save_object(node[objname],file)
     pass
 def save_(file:str,store:core.fobj):
@@ -155,7 +154,7 @@ def save_(file:str,store:core.fobj):
         return
     fio=core.fileio(file,"wb")
     save_names(store,fio)
-    save_attribute(store,fio)
+    save_subnode(store,fio)
     fio.close()
 
 def save():
@@ -187,6 +186,7 @@ def trim_dir(dirs):
     return ndirs
 
 def load_fileplugin():
+    global default_node
     fpluginpath=os.path.join(sys.path[0],'filestore/store')
     if os.path.exists(fpluginpath)==False:
         os.mkdir(fpluginpath)
@@ -198,6 +198,9 @@ def load_fileplugin():
         plugin=__import__(f"filestore.store.{pluname}",fromlist=("*"))
         if hasattr(plugin,"FILETYPES"):
             for filetype in plugin.FILETYPES:
+                if (filetype.suffix==Cfg.cfg.filestore.defnode and default_node==None):
+                    default_node=filetype
+                    # filetype.tid=-1
                 core.Storetypes[filetype.tid]=filetype
         if hasattr(plugin,"CheckCONFIG"):
             plugin.CheckCONFIG()
@@ -207,14 +210,14 @@ def init():
     global fileroot
     if fileroot!=None:
         return
+    init_filestore_config()
     load_fileplugin()
     
     hfgpath=os.path.join(sys.path[0],'helper2.hfg')
     if not os.path.exists(hfgpath):
-        fileroot=core.Storetypes[0](name='/')
+        fileroot=default_node(name='/')
         save()
     core.filetypes=map_types()
-    init_filestore_config()
 
 def init_filestore(status):
 
@@ -272,7 +275,7 @@ def checkexists(name,path=None):
         return checkdire(name),None
     elif path!=None:
         if type(path)!=str:
-            raise StoreError("the type of path must be str",StoreError.VarType)
+            raise core.StoreError("the type of path must be str",core.StoreError.VarType)
         obj= checkdire(path+'/'+name)
         if obj!=None:
             return obj,path
@@ -282,10 +285,10 @@ def checkexists(name,path=None):
     node_ind=0
     while True:
         if node_ind<len(node):
-            if node[node_ind].tid!=0:
+            if node[node_ind].tid>0:
                 if node[node_ind].name==name:
                     return node[node_ind],get_path(stack,node)
-            else:
+            elif node[node_ind].tid<0:
                 stack.append((node,node_ind+1))
                 node=node[node_ind]
                 node_ind=-1
@@ -336,14 +339,15 @@ def transfer(oripath,target):
     oriobj=oripre[oriname]
     if oriobj==None:
         raise core.StoreError("error",1)
-    if  tarobj!=oriobj and oriobj.is_physical==True:
+    if  tarobj!=oriobj and getattr(oriobj,"is_physical")==True:
         oriroute=os.path.join(Cfg.cfg.filestore.defpath,oriname+('.'+oriobj.suffix if oriobj.is_join_suff else ''))
         tarroute=os.path.join(Cfg.cfg.filestore.defpath,tarname+('.'+oriobj.suffix if oriobj.is_join_suff else ''))
         if (tarobj!=None):
-            if tarobj.tid!=0:
-                raise core.StoreError("%s is exists, it is %s"%(tarobj.name,tarpath+'/'+tarobj.name),core.StoreError.Exist)
-            elif tarobj.tid==0:
+            if tarobj.tid<0:
                 raise core.StoreError("%s is exists, it is a node"%(target),core.StoreError.Exist)
+            elif tarobj.tid>0:
+                raise core.StoreError("%s is exists, it is %s"%(tarobj.name,tarpath+'/'+tarobj.name),core.StoreError.Exist)
+                
         if oriroute !=tarroute:
             try:
                 if os.path.exists(tarroute):
@@ -381,7 +385,7 @@ def remove(objpath):
 
 
 def search(root,search_str=None,note=False):
-    backroot=core.Storetypes[0](name='/')
+    backroot=default_node(name='/')
     stack=[]
     backstack=[]
     statustack=[]
@@ -391,10 +395,10 @@ def search(root,search_str=None,note=False):
     i=0
     while True:
         if i<len(curr_note):
-            if curr_note[i].tid==0:
+            if curr_note[i].tid<0:
                 stack.append((curr_note,i+1))
                 curr_note=curr_note[i]
-                currback[curr_note.name]=core.Storetypes[0](name=curr_note.name)
+                currback[curr_note.name]=default_node(name=curr_note.name)
                 backstack.append(currback)
                 currback=currback[curr_note.name]
                 i=-1
@@ -404,7 +408,7 @@ def search(root,search_str=None,note=False):
                         curr_status=True
                     else:
                         curr_status=search_str in curr_note.name
-            else:
+            elif curr_note[i].tid>0:
                 if (note==False and ((search_str!=None and (search_str in curr_note[i].name)) or search_str==None)) or \
                     (note==True and curr_status==True):
                     currback[curr_note[i].name]=curr_note[i]
@@ -445,13 +449,13 @@ def clear_empty(notes):
     i=0
     while True:
         if i<len(curr_note):
-            if curr_note[i].tid==0:
+            if curr_note[i].tid<0:
                 stack.append((curr_note,i+1,curr_objs))
                 curr_note=curr_note[i]
                 
                 curr_objs=False
                 i=-1
-            else:
+            elif curr_note[i].tid>0:
                 curr_objs=True
         i+=1
         if i>=len(curr_note):
@@ -476,11 +480,11 @@ def get_objs(notes):
     i=0
     while True:
         if i<len(curr_note):
-            if curr_note[i].tid==0:
+            if curr_note[i].tid<0:
                 stack.append((curr_note,i+1))
                 curr_note=curr_note[i]
                 i=-1
-            else:
+            elif curr_note[i].tid>0:
                 objs.append(curr_note[i])
            
         i+=1
@@ -517,11 +521,11 @@ def clear_error():
     i=0
     while True:
         if i<len(curr_note):
-            if curr_note[i].tid==0:
+            if curr_note[i].tid<=0:
                 stack.append((curr_note,i+1))
                 curr_note=curr_note[i]
                 i=-1
-            else:
+            elif curr_note[i].tid>0:
                 if curr_note[i].checkExist(level=0)==False:
                     curr_note.pop(curr_note[i].name)
                     i-=1
