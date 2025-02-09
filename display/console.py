@@ -48,6 +48,7 @@ def outformat(objs,depth,isnote):
     pass
 
 def tree(notes,rownum):
+    # print(notes)
     i=0
     stack=[]
     curr=notes
@@ -58,7 +59,7 @@ def tree(notes,rownum):
         subnotes=[]
         objs=[]
         while i<len(curr):
-            if curr[i].tid==0:
+            if curr[i].tid < 0:
                 subnotes.append(curr[i])
             else:
                 objs.append(curr[i].name)
