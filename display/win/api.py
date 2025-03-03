@@ -218,6 +218,7 @@ def Search(path,rule):
 def referse():
     filesystem.fileroot=None
     filesystem.init()
+    filesystem.init_filestore(True)
     filesystem.clear_error()
     MakeRoot()
     Restore()
@@ -245,7 +246,7 @@ def getTypeAttrFromName(name):
         if store_type.suffix==name:
             attr={}
             needAttr=[]
-            if hasattr(store_type,"Attr_info")==None:
+            if hasattr(store_type,"Attr_info")==False:
                 return attr
             attrinfo=store_type.Attr_info
             if hasattr(store_type,"Needattr"):

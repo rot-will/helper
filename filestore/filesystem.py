@@ -210,6 +210,7 @@ def init():
     global fileroot
     if fileroot!=None:
         return
+    
     init_filestore_config()
     load_fileplugin()
     
@@ -218,6 +219,7 @@ def init():
         fileroot=default_node(name='/')
         save()
     core.filetypes=map_types()
+    
 
 def init_filestore(status):
 
